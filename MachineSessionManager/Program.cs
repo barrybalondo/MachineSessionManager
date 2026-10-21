@@ -1,6 +1,5 @@
 using MachineSessionManager.Configuration;
 using MachineSessionManager.Email;
-using MachineSessionManager.Models;
 using MachineSessionManager.Native;
 using MachineSessionManager.Reporting;
 using MachineSessionManager.Sessions;

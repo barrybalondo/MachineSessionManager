@@ -1,11 +1,11 @@
-using MachineSessionManager.Models;
 using MachineSessionManager.Reporting;
+using MachineSessionManager.Sessions;
 using Microsoft.Extensions.Logging;
 
 namespace MachineSessionManager.Email;
 
 // Owns the notification decision and coordinates report creation/delivery.
-// SMTP connections, credentials and MIME messages belong to EmailSender.
+// SMTP connections and MIME messages belong to EmailSender.
 public sealed class EmailNotification
 {
     private readonly NotificationSettings _settings;

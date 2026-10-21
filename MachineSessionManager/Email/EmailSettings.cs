@@ -1,22 +1,19 @@
-namespace MachineSessionManager.Models;
+namespace MachineSessionManager.Email;
 
 // SMTP transport configuration. Message addressing and policy belong to NotificationSettings.
 public sealed class EmailSettings
 {
-    public string SmtpServer { get; }
+    public string Host { get; }
     public int? Port { get; }
     public bool UseSsl { get; }
-    public string? UserName { get; }
 
     public EmailSettings(
-        string smtpServer,
+        string host,
         int? port,
-        bool useSsl,
-        string? userName)
+        bool useSsl)
     {
-        SmtpServer = smtpServer;
+        Host = host;
         Port = port;
         UseSsl = useSsl;
-        UserName = userName;
     }
 }

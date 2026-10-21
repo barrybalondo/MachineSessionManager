@@ -1,11 +1,14 @@
 using System.Net;
-using MachineSessionManager.Models;
+using MachineSessionManager.Email;
+using MachineSessionManager.Sessions;
 using Scriban;
 
 namespace MachineSessionManager.Reporting;
 
 public sealed class ReportBuilder
 {
+    private const string TemplateFileName = "SessionReport.html";
+
     private readonly SessionSettings _settings;
 
     public ReportBuilder(SessionSettings settings)
@@ -27,13 +30,13 @@ public sealed class ReportBuilder
         var subject = $"Machine Session {action} - {_settings.UserName} - {outcome}";
 
         var templateFile = Path.Combine(
-            AppContext.BaseDirectory, "Templates", "SessionReport.html");
+            AppContext.BaseDirectory, "Templates", TemplateFileName);
 
         var template = Template.Parse(File.ReadAllText(templateFile));
         if (template.HasErrors)
         {
             throw new InvalidOperationException(
-                "Invalid SessionReport.html: " + string.Join("; ", template.Messages));
+                $"Invalid {TemplateFileName}: " + string.Join("; ", template.Messages));
         }
 
         var model = new SessionReportModel(

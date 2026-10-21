@@ -1,5 +1,3 @@
-using MachineSessionManager.Models;
-
 namespace MachineSessionManager.Sessions;
 
 // One machine's worker and timeout waiter share this state. Report models remain immutable.

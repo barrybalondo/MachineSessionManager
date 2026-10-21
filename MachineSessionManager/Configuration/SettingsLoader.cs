@@ -1,5 +1,6 @@
 using System.Globalization;
-using MachineSessionManager.Models;
+using MachineSessionManager.Email;
+using MachineSessionManager.Sessions;
 using Microsoft.Extensions.Configuration;
 
 namespace MachineSessionManager.Configuration;
@@ -10,53 +11,53 @@ public static class SettingsLoader
 {
     public static SessionSettings LoadSession(IConfiguration configuration)
     {
-        var section = configuration.GetRequiredSection("Session");
+        var section = configuration.GetRequiredSection(ConfigurationKeys.Session.Section);
         return new SessionSettings(
-            RequiredEnum<SessionModeType>(section, "ModeType"),
-            RequiredValue(section, "UserName"),
-            ReadArray(section, "Machines"),
-            RequiredDuration(section, "MachineTimeout"));
+            RequiredEnum<SessionModeType>(section, ConfigurationKeys.Session.ModeType),
+            RequiredValue(section, ConfigurationKeys.Session.UserName),
+            ReadArray(section, ConfigurationKeys.Session.Machines),
+            RequiredDuration(section, ConfigurationKeys.Session.MachineTimeout));
     }
 
     public static EmailSettings LoadEmail(IConfiguration configuration)
     {
         // Transport details are only required by EmailSender when a message is sent.
-        var section = configuration.GetSection("Email");
-        var portText = section["Port"];
+        var section = configuration.GetSection(ConfigurationKeys.Email.Section);
+        var portText = section[ConfigurationKeys.Email.Port];
         int? port = null;
         if (!string.IsNullOrWhiteSpace(portText))
         {
             if (!int.TryParse(portText, out int parsedPort) || parsedPort < 1 || parsedPort > 65535)
             {
-                throw new InvalidOperationException("Email:Port must be between 1 and 65535, or null.");
+                throw new InvalidOperationException(
+                    $"{ConfigurationKeys.Email.PortPath} must be between 1 and 65535, or null.");
             }
 
             port = parsedPort;
         }
 
-        var sslText = section["UseSsl"];
+        var sslText = section[ConfigurationKeys.Email.UseSsl];
         var useSsl = false;
         if (sslText is not null && !bool.TryParse(sslText, out useSsl))
         {
-            throw new InvalidOperationException("Email:UseSsl must be true or false.");
+            throw new InvalidOperationException($"{ConfigurationKeys.Email.UseSslPath} must be true or false.");
         }
 
         return new EmailSettings(
-            section["SmtpServer"] ?? string.Empty,
+            section[ConfigurationKeys.Email.Host] ?? string.Empty,
             port,
-            useSsl,
-            section["UserName"]);
+            useSsl);
     }
 
     public static NotificationSettings LoadNotification(IConfiguration configuration)
     {
-        var section = configuration.GetRequiredSection("Notification");
+        var section = configuration.GetRequiredSection(ConfigurationKeys.Notification.Section);
         return new NotificationSettings(
-            RequiredEnum<NotificationModeType>(section, "NotificationModeType"),
-            section["From"] ?? string.Empty,
-            ReadArray(section, "To"),
-            ReadArray(section, "Cc"),
-            ReadArray(section, "Bcc"));
+            RequiredEnum<NotificationModeType>(section, ConfigurationKeys.Notification.NotificationModeType),
+            section[ConfigurationKeys.Notification.From] ?? string.Empty,
+            ReadArray(section, ConfigurationKeys.Notification.To),
+            ReadArray(section, ConfigurationKeys.Notification.Cc),
+            ReadArray(section, ConfigurationKeys.Notification.Bcc));
     }
 
     private static T RequiredEnum<T>(IConfigurationSection section, string key) where T : struct, Enum

@@ -1,4 +1,3 @@
-using MachineSessionManager.Models;
 using MachineSessionManager.Native;
 using Microsoft.Extensions.Logging;
 using static MachineSessionManager.Sessions.SessionResults;

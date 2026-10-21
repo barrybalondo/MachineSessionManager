@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using MachineSessionManager.Models;
 using MachineSessionManager.Native;
 using static MachineSessionManager.Sessions.SessionResults;
 

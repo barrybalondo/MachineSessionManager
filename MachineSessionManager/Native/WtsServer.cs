@@ -8,6 +8,8 @@ namespace MachineSessionManager.Native;
 // API reference: https://learn.microsoft.com/windows/win32/api/wtsapi32/
 internal sealed class WtsServer : IWtsServer
 {
+    private const string WtsLibraryName = "wtsapi32.dll";
+
     // Windows commonly uses INVALID_HANDLE_VALUE, the pointer-sized value -1, as an
     // invalid-handle sentinel. new IntPtr(-1) represents all bits set on both x86/x64.
     // IntPtr is an address-sized value; it does not allocate an object in Windows.
@@ -222,31 +224,31 @@ internal sealed class WtsServer : IWtsServer
     // CharSet.Unicode converts the machine string into the UTF-16 form expected by W.
     // SetLastError preserves the Windows error code for CreateLastWindowsException.
     // https://learn.microsoft.com/dotnet/standard/native-interop/pinvoke
-    [DllImport("wtsapi32.dll", EntryPoint = "WTSOpenServerW",
+    [DllImport(WtsLibraryName, EntryPoint = "WTSOpenServerW",
         CharSet = CharSet.Unicode, ExactSpelling = true, SetLastError = true)]
     private static extern IntPtr WTSOpenServerW(string machine);
 
     // Native BOOL is a 4-byte value, so explicitly marshal it as UnmanagedType.Bool.
     // `out` matches native pointer-to-output parameters; Windows supplies their values.
-    [DllImport("wtsapi32.dll", EntryPoint = "WTSEnumerateSessionsW", ExactSpelling = true, SetLastError = true)]
+    [DllImport(WtsLibraryName, EntryPoint = "WTSEnumerateSessionsW", ExactSpelling = true, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool WTSEnumerateSessionsW(
         IntPtr server, int reserved, int version, out IntPtr sessions, out int count);
 
-    [DllImport("wtsapi32.dll", EntryPoint = "WTSQuerySessionInformationW", ExactSpelling = true, SetLastError = true)]
+    [DllImport(WtsLibraryName, EntryPoint = "WTSQuerySessionInformationW", ExactSpelling = true, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool WTSQuerySessionInformationW(
         IntPtr server, int sessionId, WtsInfoClassType infoClass, out IntPtr buffer, out int bytes);
 
-    [DllImport("wtsapi32.dll", EntryPoint = "WTSLogoffSession", ExactSpelling = true, SetLastError = true)]
+    [DllImport(WtsLibraryName, EntryPoint = "WTSLogoffSession", ExactSpelling = true, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool WTSLogoffSession(
         IntPtr server, int sessionId, [MarshalAs(UnmanagedType.Bool)] bool wait);
 
     // Match the release function to the resource: query buffer vs server handle.
-    [DllImport("wtsapi32.dll", EntryPoint = "WTSFreeMemory", ExactSpelling = true)]
+    [DllImport(WtsLibraryName, EntryPoint = "WTSFreeMemory", ExactSpelling = true)]
     private static extern void WTSFreeMemory(IntPtr memory);
 
-    [DllImport("wtsapi32.dll", EntryPoint = "WTSCloseServer", ExactSpelling = true)]
+    [DllImport(WtsLibraryName, EntryPoint = "WTSCloseServer", ExactSpelling = true)]
     private static extern void WTSCloseServer(IntPtr server);
 }

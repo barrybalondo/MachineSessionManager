@@ -1,9 +1,8 @@
 using System.ComponentModel;
-using MachineSessionManager.Models;
 using MachineSessionManager.Email;
-using MachineSessionManager.Sessions;
 using MachineSessionManager.Native;
 using MachineSessionManager.Reporting;
+using MachineSessionManager.Sessions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 using SessionManager = MachineSessionManager.Sessions.MachineSessionManager;

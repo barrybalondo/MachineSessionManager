@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using MachineSessionManager.Models;
 using MachineSessionManager.Native;
 using MachineSessionManager.Sessions;
 using Microsoft.Extensions.Logging.Abstractions;

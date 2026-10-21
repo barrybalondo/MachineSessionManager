@@ -1,5 +1,6 @@
 using MachineSessionManager.Configuration;
-using MachineSessionManager.Models;
+using MachineSessionManager.Email;
+using MachineSessionManager.Sessions;
 using Microsoft.Extensions.Configuration;
 using Xunit;
 
@@ -121,18 +122,16 @@ public sealed class SettingsTests
     {
         var configuration = Configuration(new Dictionary<string, string?>
         {
-            ["Email:SmtpServer"] = "smtp.example.com",
+            ["Email:Host"] = "smtp.example.com",
             ["Email:Port"] = "587",
-            ["Email:UseSsl"] = "true",
-            ["Email:UserName"] = "smtp-user"
+            ["Email:UseSsl"] = "true"
         });
 
         var email = SettingsLoader.LoadEmail(configuration);
 
-        Assert.Equal("smtp.example.com", email.SmtpServer);
+        Assert.Equal("smtp.example.com", email.Host);
         Assert.Equal(587, email.Port);
         Assert.True(email.UseSsl);
-        Assert.Equal("smtp-user", email.UserName);
     }
 
     [Fact]
@@ -148,7 +147,7 @@ public sealed class SettingsTests
 
         Assert.Equal(NotificationModeType.Never, notification.NotificationModeType);
         Assert.Empty(notification.To);
-        Assert.Empty(email.SmtpServer);
+        Assert.Empty(email.Host);
     }
 
     [Fact]

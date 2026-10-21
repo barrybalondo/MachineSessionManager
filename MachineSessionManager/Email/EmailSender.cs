@@ -1,4 +1,4 @@
-using MachineSessionManager.Models;
+using MachineSessionManager.Configuration;
 using MailKit.Security;
 using MimeKit;
 using SmtpClient = MailKit.Net.Smtp.SmtpClient;
@@ -17,28 +17,11 @@ public sealed class EmailSender : IEmailSender
     public async Task SendAsync(EmailMessage email, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(email.From) || email.To.Count == 0 ||
-            string.IsNullOrWhiteSpace(_settings.SmtpServer))
+            string.IsNullOrWhiteSpace(_settings.Host))
         {
             throw new InvalidOperationException(
-                "Notification:From, Notification:To, and Email:SmtpServer are required when emailing.");
-        }
-
-        var hasLogin = !string.IsNullOrWhiteSpace(_settings.UserName);
-        if (hasLogin && !_settings.UseSsl)
-        {
-            throw new InvalidOperationException(
-                "Email:UseSsl must be true when SMTP credentials are configured.");
-        }
-
-        string? password = null;
-        if (hasLogin)
-        {
-            password = Environment.GetEnvironmentVariable("MACHINESESSION_SMTP_PASSWORD");
-            if (string.IsNullOrEmpty(password))
-            {
-                throw new InvalidOperationException(
-                    "MACHINESESSION_SMTP_PASSWORD is not set for the scheduled account.");
-            }
+                $"{ConfigurationKeys.Notification.FromPath}, {ConfigurationKeys.Notification.ToPath}, " +
+                $"and {ConfigurationKeys.Email.HostPath} are required when emailing.");
         }
 
         var message = new MimeMessage();
@@ -70,12 +53,7 @@ public sealed class EmailSender : IEmailSender
             ? SecureSocketOptions.StartTls
             : SecureSocketOptions.None;
 
-        await client.ConnectAsync(_settings.SmtpServer, _settings.Port ?? 0, security, cancellationToken);
-        if (hasLogin)
-        {
-            await client.AuthenticateAsync(_settings.UserName!, password!, cancellationToken);
-        }
-
+        await client.ConnectAsync(_settings.Host, _settings.Port ?? 0, security, cancellationToken);
         await client.SendAsync(message, cancellationToken);
         await client.DisconnectAsync(true, cancellationToken);
     }

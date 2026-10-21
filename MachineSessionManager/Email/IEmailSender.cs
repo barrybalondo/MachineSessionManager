@@ -1,5 +1,3 @@
-using MachineSessionManager.Models;
-
 namespace MachineSessionManager.Email;
 
 public interface IEmailSender

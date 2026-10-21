@@ -1,6 +1,6 @@
 using MachineSessionManager.Email;
-using MachineSessionManager.Models;
 using MachineSessionManager.Reporting;
+using MachineSessionManager.Sessions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 

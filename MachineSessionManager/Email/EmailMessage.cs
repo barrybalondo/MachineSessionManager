@@ -1,4 +1,4 @@
-namespace MachineSessionManager.Models;
+namespace MachineSessionManager.Email;
 
 // A fully addressed report ready for delivery. No notification policy travels to SMTP.
 public sealed class EmailMessage

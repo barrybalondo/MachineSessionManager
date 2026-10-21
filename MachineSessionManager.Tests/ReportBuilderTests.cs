@@ -1,5 +1,5 @@
-using MachineSessionManager.Models;
 using MachineSessionManager.Reporting;
+using MachineSessionManager.Sessions;
 using Xunit;
 
 namespace MachineSessionManager.Tests;

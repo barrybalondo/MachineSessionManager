@@ -1,4 +1,4 @@
-namespace MachineSessionManager.Models;
+namespace MachineSessionManager.Sessions;
 
 public enum SessionStatusType
 {

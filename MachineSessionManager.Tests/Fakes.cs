@@ -1,5 +1,4 @@
 using MachineSessionManager.Email;
-using MachineSessionManager.Models;
 using MachineSessionManager.Native;
 
 namespace MachineSessionManager.Tests;

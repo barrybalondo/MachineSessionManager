@@ -1,5 +1,5 @@
 using MachineSessionManager.Email;
-using MachineSessionManager.Models;
+using MachineSessionManager.Sessions;
 using Microsoft.Extensions.Logging;
 using SessionManager = MachineSessionManager.Sessions.MachineSessionManager;
 

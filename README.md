@@ -52,10 +52,11 @@ For domain users, prefer `DOMAIN\username` (as JSON: `"DOMAIN\\username"`) to av
   - `Always`: email every completed check run, including runs with no sessions and runs containing errors
 - `Notification.From`: sender address for the report
 - `Notification.To`, `Notification.Cc`, `Notification.Bcc`: arrays of recipient addresses
-- `Email.SmtpServer`: SMTP host used to deliver messages
+- `Email.Host`: SMTP host used to deliver messages
 - `Email.Port`: `null` (MailKit default), or an explicit port
 - `Email.UseSsl`: `true` means **required STARTTLS**, typically port 587; `false` means no TLS (only for a trusted unauthenticated internal SMTP relay)
-- `Email.UserName`: optional SMTP username; when provided, also set `UseSsl = true` and define `MACHINESESSION_SMTP_PASSWORD` in the environment of the account running the task. Never put passwords in appsettings or scheduled-task arguments.
+
+Email delivery uses an unauthenticated SMTP relay.
 
 Email will not be attempted when `Notification.NotificationModeType = Never`, so you can test Check mode without a functional SMTP relay.
 
@@ -73,10 +74,9 @@ Configuration is split by responsibility: `Session` controls the Windows operati
     "Bcc": []
   },
   "Email": {
-    "SmtpServer": "smtp.company.com",
+    "Host": "smtp.company.com",
     "Port": 587,
-    "UseSsl": true,
-    "UserName": null
+    "UseSsl": true
   }
 }
 ```
@@ -136,9 +136,10 @@ Session outcomes are logged to console. Retain console output with a task wrappe
 ## Structure and conventions
 
 - `Program.cs`: configuration, DI registration, starting the job, and fatal startup handling
+- `ConsoleCancellation.cs`: Ctrl+C handling and safe cancellation-source cleanup
 - `Configuration/SettingsLoader.cs`: explicit configuration parsing into immutable settings
+- `Configuration/ConfigurationKeys.cs`: shared configuration keys and diagnostic paths
 - `SessionJob.cs`: run the session batch, log results, invoke notification, and choose the process exit code
-- `Models/`: enums and constructor-created objects with get-only properties; collection inputs are copied into read-only collections
 - `Native/WtsServer.cs`: Windows API calls and unmanaged memory ownership
 - `Native/IWtsServer.cs`: injectable Windows boundary; tests use simulated sessions
 - `Native/IWtsServerFactory.cs`: creates an open connection owned by its calling method
@@ -153,6 +154,8 @@ Session outcomes are logged to console. Retain console output with a task wrappe
 - `Reporting/SessionReportModel.cs` and `SessionReportRow.cs`: the named, immutable contract consumed by the HTML template
 - `Templates/SessionReport.html`: Scriban HTML email with table layout, inline styles, and Outlook-specific width/DPI handling
 - `MachineSessionManager.Tests/`: behavior tests that do not contact machines or SMTP servers
+
+Settings, messages, results, and enums live directly in their owning `Email/` or `Sessions/` folder. Reporting display models live in `Reporting/`. Model properties are get-only, and collection inputs are copied into read-only collections.
 
 `CreateLastWindowsException` (previously `LastError`) creates a `Win32Exception` from the Windows error code preserved by P/Invoke. `throw CreateLastWindowsException(...)` then throws that returned exception. It is an ordinary helper method, not special C# syntax. The native wrapper includes comments on the WTS calls, buffers, and protocol values. The native interop structure uses fields to match Windows' memory layout; application models use get-only properties.
 
@@ -176,9 +179,9 @@ Each class owns one cohesive part of the workflow:
 | `EmailNotification` | Decide whether to notify, build an addressed message, and request delivery |
 | `ReportBuilder` | Build the report's subject, plain-text body, and Scriban HTML body |
 | `SessionReportModel` / `SessionReportRow` | Describe the template's immutable display data |
-| `EmailSender` | Validate delivery settings, construct MIME, authenticate, and transmit over SMTP |
+| `EmailSender` | Validate delivery settings, construct MIME, and transmit over SMTP |
 
-`EmailSender` never interprets `NotificationModeType`. `EmailNotification` never opens SMTP connections. `EmailSender` receives `EmailSettings` containing only SMTP transport configuration. `EmailNotification` receives separate `NotificationSettings` for policy and addressing, and passes a fully addressed `EmailMessage` to the sender. SMTP credentials and MIME formatting are delivery concerns, while eligibility checks and verification are part of a single safe sign-out operation.
+`EmailSender` never interprets `NotificationModeType`. `EmailNotification` never opens SMTP connections. `EmailSender` receives `EmailSettings` containing only SMTP transport configuration. `EmailNotification` receives separate `NotificationSettings` for policy and addressing, and passes a fully addressed `EmailMessage` to the sender. SMTP connection security and MIME formatting are delivery concerns, while eligibility checks and verification are part of a single safe sign-out operation.
 
 Connections are owned by the method performing the operation. Each machine worker opens and disposes its own discovery connection. `SessionSignOut.ExecuteAsync` opens a separate connection through its constructor-injected `IWtsServerFactory` and disposes it after sign-out/verification, including early returns, failures, and cancellation. A timeout never disposes a connection while a native call is still using it. Open connections are not passed between these classes. The factory allows tests to create simulated connections.
 

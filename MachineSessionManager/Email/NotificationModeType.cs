@@ -1,4 +1,4 @@
-namespace MachineSessionManager.Models;
+namespace MachineSessionManager.Email;
 
 public enum NotificationModeType
 {
