@@ -9,8 +9,11 @@ namespace MachineSessionManager.Email;
 public sealed class EmailNotification
 {
     private readonly NotificationSettings _settings;
+
     private readonly ReportBuilder _reportBuilder;
+
     private readonly IEmailSender _emailSender;
+
     private readonly ILogger<EmailNotification> _logger;
 
     public EmailNotification(

@@ -4,9 +4,13 @@ namespace MachineSessionManager.Email;
 public sealed class EmailMessage
 {
     public string From { get; }
+
     public IReadOnlyList<string> To { get; }
+
     public IReadOnlyList<string> Cc { get; }
+
     public IReadOnlyList<string> Bcc { get; }
+
     public EmailReport Report { get; }
 
     public EmailMessage(

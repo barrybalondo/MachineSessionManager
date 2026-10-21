@@ -9,8 +9,11 @@ namespace MachineSessionManager;
 public sealed class SessionJob
 {
     private readonly SessionSettings _session;
+
     private readonly SessionManager _sessionManager;
+
     private readonly EmailNotification _emailNotification;
+
     private readonly ILogger<SessionJob> _logger;
 
     public SessionJob(

@@ -8,11 +8,17 @@ internal sealed class FakeWtsServer : IWtsServer
     public IReadOnlyList<int> LogoffRequests => _logoffRequests.AsReadOnly();
 
     private readonly IReadOnlyList<WindowsSession> _sessions;
+
     private readonly Func<int, WindowsSessionUser> _readUser;
+
     private readonly Func<int, ushort> _protocol;
+
     private readonly Action<int> _logoff;
+
     private readonly Exception? _enumerationError;
+
     private readonly Action _dispose;
+
     private readonly List<int> _logoffRequests = [];
 
     public FakeWtsServer(
@@ -82,10 +88,13 @@ internal sealed class FakeWtsServerFactory : IWtsServerFactory
 internal sealed class FakeEmailSender : IEmailSender
 {
     public IReadOnlyList<EmailMessage> Messages => _messages.AsReadOnly();
+
     public IReadOnlyList<EmailReport> Reports => _messages.Select(message => message.Report).ToArray();
 
     private readonly bool _fail;
+
     private readonly Exception? _error;
+
     private readonly List<EmailMessage> _messages = [];
 
     public FakeEmailSender(bool fail = false, Exception? error = null)

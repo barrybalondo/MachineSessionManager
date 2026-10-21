@@ -11,6 +11,7 @@ public sealed class SessionSignOut
     private const int SessionNotFound = 7022;
     // Returned WTS protocol value, distinct from the information-class selector 16.
     private const ushort RdpProtocol = 2;
+
     private readonly IWtsServerFactory _serverFactory;
 
     public SessionSignOut(IWtsServerFactory serverFactory)

@@ -3,11 +3,17 @@ namespace MachineSessionManager.Reporting;
 public sealed class SessionReportRow
 {
     public string Machine { get; }
+
     public string UserName { get; }
+
     public string Session { get; }
+
     public string State { get; }
+
     public string Status { get; }
+
     public string Details { get; }
+
     public string Color { get; }
 
     public SessionReportRow(

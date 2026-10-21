@@ -4,9 +4,13 @@ namespace MachineSessionManager.Email;
 public sealed class NotificationSettings
 {
     public NotificationModeType NotificationModeType { get; }
+
     public string From { get; }
+
     public IReadOnlyList<string> To { get; }
+
     public IReadOnlyList<string> Cc { get; }
+
     public IReadOnlyList<string> Bcc { get; }
 
     public NotificationSettings(

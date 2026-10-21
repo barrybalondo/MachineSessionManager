@@ -7,8 +7,11 @@ namespace MachineSessionManager.Sessions;
 public sealed class MachineSessionManager
 {
     private readonly SessionSettings _settings;
+
     private readonly IWtsServerFactory _serverFactory;
+
     private readonly SessionSignOut _signOut;
+
     private readonly ILogger<MachineSessionManager> _logger;
 
     public MachineSessionManager(

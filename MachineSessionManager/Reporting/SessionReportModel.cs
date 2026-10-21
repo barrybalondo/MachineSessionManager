@@ -5,12 +5,19 @@ namespace MachineSessionManager.Reporting;
 public sealed class SessionReportModel
 {
     public string UserName { get; }
+
     public string Action { get; }
+
     public string RunTime { get; }
+
     public int MachineCount { get; }
+
     public int SessionCount { get; }
+
     public int ActivityCount { get; }
+
     public int IssueCount { get; }
+
     public IReadOnlyList<SessionReportRow> Results { get; }
 
     public SessionReportModel(

@@ -3,7 +3,9 @@ namespace MachineSessionManager.Native;
 public sealed class WindowsSession
 {
     public int Id { get; }
+
     public string StationName { get; }
+
     public WtsConnectionStateType State { get; }
 
     public WindowsSession(int id, string stationName, WtsConnectionStateType state)
@@ -17,7 +19,9 @@ public sealed class WindowsSession
 public sealed class WindowsSessionUser
 {
     public string UserName { get; }
+
     public string Domain { get; }
+
     public string AccountName => string.IsNullOrEmpty(Domain) ? UserName : $"{Domain}\\{UserName}";
 
     public WindowsSessionUser(string userName, string domain)

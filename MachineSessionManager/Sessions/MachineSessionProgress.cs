@@ -16,8 +16,11 @@ internal sealed class MachineSessionProgress
     }
 
     private readonly object _gate = new();
+
     private readonly List<SessionResult> _results = [];
+
     private SessionResult? _pending;
+
     private bool _completed;
 
     public void SetPending(SessionResult? result)

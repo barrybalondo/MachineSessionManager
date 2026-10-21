@@ -14,7 +14,9 @@ internal sealed class WtsServer : IWtsServer
     // invalid-handle sentinel. new IntPtr(-1) represents all bits set on both x86/x64.
     // IntPtr is an address-sized value; it does not allocate an object in Windows.
     private static readonly IntPtr InvalidHandleValue = new IntPtr(-1);
+
     private readonly IntPtr _handle;
+
     private readonly string _machine;
 
     public WtsServer(string machine)
@@ -199,7 +201,9 @@ internal sealed class WtsServer : IWtsServer
     private struct WtsSessionInfo
     {
         public int SessionId;
+
         public IntPtr StationName;
+
         public WtsConnectionStateType State;
     }
 

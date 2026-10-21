@@ -3,8 +3,11 @@ namespace MachineSessionManager;
 internal sealed class ConsoleCancellation : IDisposable
 {
     private readonly object _sync = new();
+
     private readonly CancellationTokenSource _source = new();
+
     private bool _disposed;
+
     private int _cancellationCalls;
 
     public CancellationToken Token { get; }
