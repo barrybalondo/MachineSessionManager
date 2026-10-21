@@ -44,26 +44,15 @@ internal static class Program
             builder.Services.AddSingleton<SessionJob>();
 
             using var host = builder.Build();
-            using var cancellation = new CancellationTokenSource();
-            ConsoleCancelEventHandler cancelHandler = (_, eventArgs) =>
-            {
-                eventArgs.Cancel = true;
-                cancellation.Cancel();
-            };
-
-            Console.CancelKeyPress += cancelHandler;
+            using var cancellation = new ConsoleCancellation();
             try
             {
                 return await host.Services.GetRequiredService<SessionJob>().RunAsync(cancellation.Token);
             }
-            catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+            catch (OperationCanceledException) when (cancellation.Token.IsCancellationRequested)
             {
                 Console.Error.WriteLine("Machine session job cancelled. Any submitted logoff may still complete.");
                 return 2;
-            }
-            finally
-            {
-                Console.CancelKeyPress -= cancelHandler;
             }
         }
         catch (Exception ex)
