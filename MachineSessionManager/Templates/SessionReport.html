@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Machine Session Report</title>
+  <!--[if mso]>
+  <noscript>
+    <xml>
+      <o:OfficeDocumentSettings>
+        <o:PixelsPerInch>96</o:PixelsPerInch>
+      </o:OfficeDocumentSettings>
+    </xml>
+  </noscript>
+  <![endif]-->
+</head>
+<!-- Layout tables and inline cell styles support classic Outlook's Word renderer.
+     Do not depend on flex/grid, div sizing, rounded corners or external stylesheets. -->
+<body style="margin:0;padding:0;background-color:#f1f5f9;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f1f5f9" style="width:100%;border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt;">
+    <tr>
+      <td align="center" style="padding:24px 12px;">
+        <!--[if mso]>
+        <table role="presentation" width="800" cellpadding="0" cellspacing="0" border="0"><tr><td>
+        <![endif]-->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" style="width:100%;max-width:800px;border:1px solid #dbe2ea;border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt;">
+          <tr>
+            <td bgcolor="#172554" style="padding:18px 24px;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:20px;font-weight:bold;line-height:26px;mso-line-height-rule:at-least;">
+              Machine Session Report
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:20px 24px;color:#334155;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:22px;mso-line-height-rule:at-least;">
+              <strong>User:</strong> {{ UserName }}<br>
+              <strong>Action:</strong> {{ Action }}<br>
+              <strong>Run time:</strong> {{ RunTime }}
+            </td>
+          </tr>
+          <tr>
+            <td bgcolor="#e2e8f0" style="padding:12px 24px;color:#334155;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:20px;mso-line-height-rule:at-least;">
+              <strong>Machines:</strong> {{ MachineCount }} &nbsp;|&nbsp;
+              <strong>Matching sessions:</strong> {{ SessionCount }} &nbsp;|&nbsp;
+              <strong>Activity:</strong> {{ ActivityCount }} &nbsp;|&nbsp;
+              <strong>Issues:</strong> {{ IssueCount }}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:16px 24px;">
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt;">
+                <thead>
+                  <tr bgcolor="#e2e8f0">
+                    <th scope="col" align="left" valign="top" style="padding:10px 8px;color:#1e293b;font-family:Arial,Helvetica,sans-serif;font-size:13px;">Machine / user</th>
+                    <th scope="col" align="left" valign="top" style="padding:10px 8px;color:#1e293b;font-family:Arial,Helvetica,sans-serif;font-size:13px;">Session</th>
+                    <th scope="col" align="left" valign="top" style="padding:10px 8px;color:#1e293b;font-family:Arial,Helvetica,sans-serif;font-size:13px;">Status</th>
+                    <th scope="col" align="left" valign="top" style="padding:10px 8px;color:#1e293b;font-family:Arial,Helvetica,sans-serif;font-size:13px;">Details</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {{ for result in Results }}
+                  <tr>
+                    <td valign="top" style="padding:11px 8px;border-bottom:1px solid #dbe2ea;color:#334155;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:19px;mso-line-height-rule:at-least;">{{ result.Machine }}<br>{{ result.UserName }}</td>
+                    <td valign="top" style="padding:11px 8px;border-bottom:1px solid #dbe2ea;color:#334155;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:19px;mso-line-height-rule:at-least;">{{ result.Session }}<br>{{ result.State }}</td>
+                    <td valign="top" style="padding:11px 8px;border-bottom:1px solid #dbe2ea;color:{{ result.Color }};font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:bold;line-height:19px;mso-line-height-rule:at-least;">{{ result.Status }}</td>
+                    <td valign="top" style="padding:11px 8px;border-bottom:1px solid #dbe2ea;color:#334155;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:19px;mso-line-height-rule:at-least;">{{ result.Details }}</td>
+                  </tr>
+                  {{ end }}
+                </tbody>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:4px 24px 20px;color:#64748b;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;mso-line-height-rule:at-least;">
+              Automated report from MachineSessionManager.
+            </td>
+          </tr>
+        </table>
+        <!--[if mso]>
+        </td></tr></table>
+        <![endif]-->
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

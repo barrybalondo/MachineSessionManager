@@ -1,0 +1,18 @@
+root = true
+
+[*.cs]
+indent_style = space
+indent_size = 4
+csharp_prefer_braces = true:warning
+csharp_new_line_before_open_brace = all
+csharp_style_var_for_built_in_types = true:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_style_var_elsewhere = true:suggestion
+
+dotnet_naming_rule.enum_types_have_type_suffix.severity = warning
+dotnet_naming_rule.enum_types_have_type_suffix.symbols = enum_types
+dotnet_naming_rule.enum_types_have_type_suffix.style = type_suffix
+dotnet_naming_symbols.enum_types.applicable_kinds = enum
+dotnet_naming_symbols.enum_types.applicable_accessibilities = *
+dotnet_naming_style.type_suffix.required_suffix = Type
+dotnet_naming_style.type_suffix.capitalization = pascal_case
