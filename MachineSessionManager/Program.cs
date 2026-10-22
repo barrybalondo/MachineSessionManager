@@ -5,6 +5,9 @@ using MachineSessionManager.Reporting;
 using MachineSessionManager.Sessions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Serilog;
+using Serilog.Events;
 using SessionManager = MachineSessionManager.Sessions.MachineSessionManager;
 
 namespace MachineSessionManager;
@@ -13,11 +16,16 @@ internal static class Program
 {
     private static async Task<int> Main(string[] args)
     {
+        using var bootstrapLogger = new LoggerConfiguration()
+            .WriteTo.Console(standardErrorFromLevel: LogEventLevel.Warning)
+            .CreateLogger();
+        Log.Logger = bootstrapLogger;
+
         try
         {
             if (!OperatingSystem.IsWindows())
             {
-                Console.Error.WriteLine("MachineSessionManager requires Windows.");
+                Log.Fatal("MachineSessionManager requires Windows.");
                 return 2;
             }
 
@@ -27,6 +35,15 @@ internal static class Program
                     Args = args,
                     ContentRootPath = AppContext.BaseDirectory
                 });
+
+            Log.Logger = new LoggerConfiguration()
+                .ReadFrom.Configuration(builder.Configuration)
+                .Enrich.FromLogContext()
+                .CreateLogger();
+
+            builder.Logging.ClearProviders();
+            // Main owns disposal so failures can still be logged after host cleanup.
+            builder.Services.AddSerilog(Log.Logger, dispose: false);
 
             var session = SettingsLoader.LoadSession(builder.Configuration);
             var notification = SettingsLoader.LoadNotification(builder.Configuration);
@@ -50,15 +67,18 @@ internal static class Program
             }
             catch (OperationCanceledException) when (cancellation.Token.IsCancellationRequested)
             {
-                Console.Error.WriteLine("Machine session job cancelled. Any submitted logoff may still complete.");
+                Log.Warning("Machine session job cancelled. Any submitted logoff may still complete.");
                 return 2;
             }
         }
         catch (Exception ex)
         {
-            // Covers malformed JSON and DI/startup failures before a logger exists.
-            Console.Error.WriteLine($"Machine session job failed: {ex}");
+            Log.Fatal(ex, "Machine session job failed");
             return 2;
+        }
+        finally
+        {
+            await Log.CloseAndFlushAsync();
         }
     }
 }

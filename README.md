@@ -120,7 +120,11 @@ The timeout stops waiting and requests cancellation; it cannot interrupt a synch
 
 Press Ctrl+C to cancel the job. The application stops waiting for native work, requests cancellation of every machine, and exits with code 2. An interrupted run does not send a consolidated email. Task Scheduler forcibly terminating the process can bypass application cleanup.
 
-Session outcomes are logged to console. Retain console output with a task wrapper/redirection, or add a file logging provider for historical results. Task Scheduler history records task execution events; it does not retain this application's console report. If the app cannot load its configuration, never starts, or cannot send email, it cannot reliably email a report: use Task Scheduler history/monitoring as a fallback. `Always` and `Relevant` include machine, session-query, and logoff errors in the consolidated report.
+Application and framework logs use Serilog through the existing `ILogger<T>` interfaces. Configure levels and destinations in the `Serilog` section of `appsettings.json`. The default destination is the console, with warnings and errors written to standard error. Early startup failures use a bootstrap console logger. Logs are flushed after the job and host cleanup, including cancellation and failures.
+
+To add Seq later, install `Serilog.Sinks.Seq`, add it to `Serilog.Using`, and append a `Seq` entry to `Serilog.WriteTo` with `Args.serverUrl` set to your Seq ingestion URL. The application services can keep their existing logging calls.
+
+Retain console output with a task wrapper/redirection, or configure a persistent Serilog sink for historical results. Task Scheduler history records task execution events; it does not retain this application's console report. If the app cannot load its configuration, never starts, or cannot send email, it cannot reliably email a report: use Task Scheduler history/monitoring as a fallback. `Always` and `Relevant` include machine, session-query, and logoff errors in the consolidated report.
 
 ## Windows permissions / limitations
 
