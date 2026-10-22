@@ -7,7 +7,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Serilog;
-using Serilog.Events;
 using SessionManager = MachineSessionManager.Sessions.MachineSessionManager;
 
 namespace MachineSessionManager;
@@ -16,10 +15,9 @@ internal static class Program
 {
     private static async Task<int> Main(string[] args)
     {
-        using var bootstrapLogger = new LoggerConfiguration()
-            .WriteTo.Console(standardErrorFromLevel: LogEventLevel.Warning)
+        Log.Logger = new LoggerConfiguration()
+            .WriteTo.Console()
             .CreateLogger();
-        Log.Logger = bootstrapLogger;
 
         try
         {
@@ -35,11 +33,6 @@ internal static class Program
                     Args = args,
                     ContentRootPath = AppContext.BaseDirectory
                 });
-
-            Log.Logger = new LoggerConfiguration()
-                .ReadFrom.Configuration(builder.Configuration)
-                .Enrich.FromLogContext()
-                .CreateLogger();
 
             builder.Logging.ClearProviders();
             // Main owns disposal so failures can still be logged after host cleanup.
