@@ -87,7 +87,7 @@ internal static class Program
         }
         catch (Exception ex)
         {
-            Log.Fatal(ex, "Machine session job failed");
+            Log.Fatal(ex, "Machine session job failed (HRESULT: 0x{HResult:X8})", ex.HResult);
 
             return 2;
         }

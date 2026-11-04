@@ -122,7 +122,7 @@ public sealed class SessionSignOut
         {
             throw;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not DllNotFoundException)
         {
             return MakeResult(
                 machine: machine,

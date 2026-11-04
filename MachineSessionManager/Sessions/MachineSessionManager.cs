@@ -143,7 +143,7 @@ public sealed class MachineSessionManager
                 {
                     throw;
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (ex is not DllNotFoundException)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
@@ -179,7 +179,7 @@ public sealed class MachineSessionManager
         {
             throw;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not DllNotFoundException)
         {
             cancellationToken.ThrowIfCancellationRequested();
 

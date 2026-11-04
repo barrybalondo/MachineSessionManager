@@ -68,7 +68,7 @@ Machines are checked in parallel. Results follow the order in `Session:Machines`
 
 When a machine times out, completed results are kept. Unfinished work is marked `TimedOut`, or `NotConfirmed` if a sign-out was in progress. A timeout or Ctrl+C cannot interrupt a Windows call already running or undo a sign-out already submitted.
 
-`Relevant` emails include matching sessions, errors, skipped operations, timeouts, and unconfirmed sign-outs. Startup, credential, or impersonation failures and cancelled runs do not send a report; check the console output for the error. If sending email fails, the job returns exit code `2` even if the session work has already finished.
+`Relevant` emails include matching sessions, errors, skipped operations, timeouts, and unconfirmed sign-outs. Startup, credential, or impersonation failures, missing Windows DLLs, and cancelled runs do not send a report; check the console output for the error. If sending email fails, the job returns exit code `2` even if the session work has already finished.
 
 ## Deployment
 
@@ -94,4 +94,4 @@ Give Check and SignOut their own schedules. Set each task to skip starting anoth
 | --- | --- |
 | `0` | Finished without session issues. |
 | `1` | Finished with an error, skipped operation, timeout, or unconfirmed sign-out. |
-| `2` | Configuration, credential, impersonation, or email failure, or the run was cancelled. |
+| `2` | Configuration, credential, impersonation, missing Windows DLL, or email failure, or the run was cancelled. |

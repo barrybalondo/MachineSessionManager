@@ -58,6 +58,40 @@ public sealed class SessionJobTests
         }
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task MissingNativeLibraryFailsTheJobWithoutSendingAReport(bool failOnSessionQuery)
+    {
+        var session = new SessionSettings(
+            mode: SessionModeType.Check,
+            userName: "alice",
+            machines: ["ONE", "TWO"],
+            machineTimeout: TimeSpan.FromSeconds(30));
+        var factory = new FakeWtsServerFactory(
+            _ =>
+            {
+                if (!failOnSessionQuery)
+                {
+                    throw new DllNotFoundException();
+                }
+
+                return new FakeWtsServer(
+                    sessions: [new WindowsSession(1, "RDP-Tcp#1", WtsConnectionStateType.Active)],
+                    readUser: _ => throw new DllNotFoundException());
+            });
+        var sender = new FakeEmailSender();
+        var job = CreateJob(
+            session: session,
+            notificationMode: NotificationModeType.Always,
+            factory: factory,
+            sender: sender);
+
+        await Assert.ThrowsAsync<DllNotFoundException>(() => job.RunAsync());
+
+        Assert.Empty(sender.Messages);
+    }
+
     [Fact]
     public async Task EmailFailureReturnsFatalExitCodeAfterChecksComplete()
     {
