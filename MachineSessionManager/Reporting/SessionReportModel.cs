@@ -1,6 +1,5 @@
 namespace MachineSessionManager.Reporting;
 
-// The explicit contract between ReportBuilder and the Scriban HTML template.
 // Display strings are HTML-encoded by the builder before entering this model.
 public sealed class SessionReportModel
 {

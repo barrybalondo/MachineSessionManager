@@ -23,7 +23,8 @@ public sealed class SessionSettings
         // Task.WaitAsync uses a timer with this maximum supported duration.
         if (machineTimeout <= TimeSpan.Zero || machineTimeout > TimeSpan.FromMilliseconds(uint.MaxValue - 1))
         {
-            throw new ArgumentOutOfRangeException(nameof(machineTimeout),
+            throw new ArgumentOutOfRangeException(
+                nameof(machineTimeout),
                 "MachineTimeout must be positive and no greater than 49.17:02:47.294.");
         }
 

@@ -3,7 +3,6 @@ using MachineSessionManager.Native;
 
 namespace MachineSessionManager.Sessions;
 
-// Translates native observations/failures into the application's result model.
 internal static class SessionResults
 {
     internal static SessionStatusType Classify(Exception ex)
@@ -22,9 +21,18 @@ internal static class SessionResults
     }
 
     internal static SessionResult MakeResult(
-        string machine, WindowsSession? session, WindowsSessionUser? user, SessionStatusType status, string details)
+        string machine,
+        WindowsSession? session,
+        WindowsSessionUser? user,
+        SessionStatusType status,
+        string details)
     {
-        return new SessionResult(machine, session?.Id, user?.AccountName,
-            session?.State.ToString() ?? "-", status, details);
+        return new SessionResult(
+            machine: machine,
+            sessionId: session?.Id,
+            userName: user?.AccountName,
+            state: session?.State.ToString() ?? "-",
+            status: status,
+            details: details);
     }
 }

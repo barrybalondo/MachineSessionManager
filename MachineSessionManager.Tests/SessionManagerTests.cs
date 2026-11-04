@@ -12,17 +12,21 @@ public sealed class SessionManagerTests
     [Fact]
     public async Task FailedSessionQueriesPreserveOtherResultsOnTheSameMachine()
     {
-        var server = new FakeWtsServer([Session(1), Session(2), Session(3), Session(4)], id => id switch
-        {
-            2 => throw new Win32Exception(5),
-            4 => throw new Win32Exception(1722),
-            _ => Alice()
-        });
+        var server = new FakeWtsServer(
+            [Session(1), Session(2), Session(3), Session(4)],
+            id => id switch
+            {
+                2 => throw new Win32Exception(5),
+                4 => throw new Win32Exception(1722),
+                _ => Alice()
+            });
 
         var results = await Create(SessionModeType.Check, server).ExecuteAsync();
 
-        Assert.Equal(new[] { SessionStatusType.SignedIn, SessionStatusType.AccessDenied,
-            SessionStatusType.SignedIn, SessionStatusType.Unreachable }, results.Select(result => result.Status));
+        Assert.Equal(
+            new[] { SessionStatusType.SignedIn, SessionStatusType.AccessDenied,
+                SessionStatusType.SignedIn, SessionStatusType.Unreachable },
+            results.Select(result => result.Status));
         Assert.Equal(new int?[] { 1, 2, 3, 4 }, results.Select(result => result.SessionId));
         Assert.Empty(server.LogoffRequests);
     }
@@ -34,41 +38,52 @@ public sealed class SessionManagerTests
     {
         var working = new FakeWtsServer([Session(1)], _ => Alice());
         var broken = new FakeWtsServer([], _ => Alice(), enumerationError: new Win32Exception(5));
-        var factory = new FakeWtsServerFactory(machine =>
-        {
-            if (machine == "BROKEN")
+        var factory = new FakeWtsServerFactory(
+            machine =>
             {
-                if (failEnumeration)
+                if (machine == "BROKEN")
                 {
-                    return broken;
+                    if (failEnumeration)
+                    {
+                        return broken;
+                    }
+
+                    throw new Win32Exception(5);
                 }
 
-                throw new Win32Exception(5);
-            }
-
-            return working;
-        });
-        var manager = new SessionManager(new SessionSettings(SessionModeType.Check, "DOMAIN\\alice",
-            ["FIRST", "BROKEN", "LAST"], TimeSpan.FromSeconds(30)), factory, new SessionSignOut(factory),
-            NullLogger<SessionManager>.Instance);
+                return working;
+            });
+        var manager = new SessionManager(
+            settings: new SessionSettings(
+                mode: SessionModeType.Check,
+                userName: "DOMAIN\\alice",
+                machines: ["FIRST", "BROKEN", "LAST"],
+                machineTimeout: TimeSpan.FromSeconds(30)),
+            serverFactory: factory,
+            signOut: new SessionSignOut(factory),
+            logger: NullLogger<SessionManager>.Instance);
 
         var results = await manager.ExecuteAsync();
 
         Assert.Equal(new[] { "FIRST", "BROKEN", "LAST" }, results.Select(result => result.Machine));
-        Assert.Equal(new[] { SessionStatusType.SignedIn, SessionStatusType.AccessDenied, SessionStatusType.SignedIn },
+        Assert.Equal(
+            new[] { SessionStatusType.SignedIn, SessionStatusType.AccessDenied, SessionStatusType.SignedIn },
             results.Select(result => result.Status));
     }
 
     [Fact]
     public async Task UnrequestedCancellationInAQueryIsAnErrorAndOtherSessionsContinue()
     {
-        var server = new FakeWtsServer([Session(1), Session(2)], id => id == 1
-            ? throw new OperationCanceledException("The query cancelled without a job cancellation.")
-            : Alice());
+        var server = new FakeWtsServer(
+            [Session(1), Session(2)],
+            id => id == 1
+                ? throw new OperationCanceledException("The query cancelled without a job cancellation.")
+                : Alice());
 
         var results = await Create(SessionModeType.Check, server).ExecuteAsync();
 
-        Assert.Equal(new[] { SessionStatusType.Error, SessionStatusType.SignedIn },
+        Assert.Equal(
+            new[] { SessionStatusType.Error, SessionStatusType.SignedIn },
             results.Select(result => result.Status));
         Assert.Equal(new int?[] { 1, 2 }, results.Select(result => result.SessionId));
     }
@@ -76,18 +91,26 @@ public sealed class SessionManagerTests
     [Fact]
     public async Task UnrequestedCancellationOpeningAMachineDoesNotStopOtherMachines()
     {
-        var factory = new FakeWtsServerFactory(machine => machine == "BROKEN"
-            ? throw new OperationCanceledException("The connection cancelled without a job cancellation.")
-            : new FakeWtsServer([Session(1)], _ => Alice()));
-        var settings = new SessionSettings(SessionModeType.Check, "DOMAIN\\alice",
-            ["BROKEN", "WORKING"], TimeSpan.FromSeconds(30));
-        var manager = new SessionManager(settings, factory, new SessionSignOut(factory),
-            NullLogger<SessionManager>.Instance);
+        var factory = new FakeWtsServerFactory(
+            machine => machine == "BROKEN"
+                ? throw new OperationCanceledException("The connection cancelled without a job cancellation.")
+                : new FakeWtsServer([Session(1)], _ => Alice()));
+        var settings = new SessionSettings(
+            mode: SessionModeType.Check,
+            userName: "DOMAIN\\alice",
+            machines: ["BROKEN", "WORKING"],
+            machineTimeout: TimeSpan.FromSeconds(30));
+        var manager = new SessionManager(
+            settings: settings,
+            serverFactory: factory,
+            signOut: new SessionSignOut(factory),
+            logger: NullLogger<SessionManager>.Instance);
 
         var results = await manager.ExecuteAsync();
 
         Assert.Equal(new[] { "BROKEN", "WORKING" }, results.Select(result => result.Machine));
-        Assert.Equal(new[] { SessionStatusType.Error, SessionStatusType.SignedIn },
+        Assert.Equal(
+            new[] { SessionStatusType.Error, SessionStatusType.SignedIn },
             results.Select(result => result.Status));
     }
 
@@ -104,9 +127,11 @@ public sealed class SessionManagerTests
     [Fact]
     public async Task OtherAccountsAndEmptyServiceSessionsDoNotMatch()
     {
-        var server = new FakeWtsServer([Session(1), Session(2)], id => id == 1
-            ? new WindowsSessionUser("alice", "OTHER")
-            : new WindowsSessionUser("", ""));
+        var server = new FakeWtsServer(
+            [Session(1), Session(2)],
+            id => id == 1
+                ? new WindowsSessionUser("alice", "OTHER")
+                : new WindowsSessionUser("", ""));
 
         var result = Assert.Single(await Create(SessionModeType.Check, server).ExecuteAsync());
 
@@ -133,7 +158,9 @@ public sealed class SessionManagerTests
     [InlineData(WtsConnectionStateType.Disconnected)]
     public async Task SignOutTargetsBothActiveAndDisconnectedRdpSessions(WtsConnectionStateType state)
     {
-        var server = new FakeWtsServer([new WindowsSession(1, "RDP-Tcp#1", state)], _ => Alice(),
+        var server = new FakeWtsServer(
+            [new WindowsSession(1, "RDP-Tcp#1", state)],
+            _ => Alice(),
             logoff: _ => throw new Win32Exception(5));
 
         var result = Assert.Single(await Create(SessionModeType.SignOut, server).ExecuteAsync());
@@ -145,7 +172,9 @@ public sealed class SessionManagerTests
     [Fact]
     public async Task FailedLogoffDoesNotStopNextSession()
     {
-        var server = new FakeWtsServer([Session(1), Session(2)], _ => Alice(),
+        var server = new FakeWtsServer(
+            [Session(1), Session(2)],
+            _ => Alice(),
             logoff: _ => throw new Win32Exception(5));
 
         var results = await Create(SessionModeType.SignOut, server).ExecuteAsync();
@@ -171,9 +200,11 @@ public sealed class SessionManagerTests
     public async Task ReusedIdInAnotherDomainIsNotSignedOutEvenWithBareUserConfiguration()
     {
         var reads = 0;
-        var server = new FakeWtsServer([Session(1)], _ => ++reads == 1
-            ? Alice()
-            : new WindowsSessionUser("alice", "OTHER"));
+        var server = new FakeWtsServer(
+            [Session(1)],
+            _ => ++reads == 1
+                ? Alice()
+                : new WindowsSessionUser("alice", "OTHER"));
         var manager = Create(SessionModeType.SignOut, server, "alice");
 
         var result = Assert.Single(await manager.ExecuteAsync());
@@ -198,19 +229,23 @@ public sealed class SessionManagerTests
     public async Task VerificationOnlyQueriesTheTargetSession()
     {
         var reads = 0;
-        var server = new FakeWtsServer([Session(1), Session(2)], id =>
-        {
-            if (id == 2)
+        var server = new FakeWtsServer(
+            [Session(1), Session(2)],
+            id =>
             {
-                throw new Win32Exception(5);
-            }
+                if (id == 2)
+                {
+                    throw new Win32Exception(5);
+                }
 
-            return ++reads <= 2 ? Alice() : throw new Win32Exception(7022);
-        });
+                return ++reads <= 2 ? Alice() : throw new Win32Exception(7022);
+            });
 
         var results = await Create(SessionModeType.SignOut, server).ExecuteAsync();
 
-        Assert.Equal(new[] { SessionStatusType.Success, SessionStatusType.AccessDenied }, results.Select(result => result.Status));
+        Assert.Equal(
+            new[] { SessionStatusType.Success, SessionStatusType.AccessDenied },
+            results.Select(result => result.Status));
         Assert.Equal(new[] { 1 }, server.LogoffRequests);
     }
 
@@ -254,7 +289,14 @@ public sealed class SessionManagerTests
     private static SessionManager Create(SessionModeType mode, FakeWtsServer server, string userName)
     {
         var factory = new FakeWtsServerFactory(_ => server);
-        return new SessionManager(new SessionSettings(mode, userName, ["VM"], TimeSpan.FromSeconds(30)),
-            factory, new SessionSignOut(factory), NullLogger<SessionManager>.Instance);
+        return new SessionManager(
+            settings: new SessionSettings(
+                mode: mode,
+                userName: userName,
+                machines: ["VM"],
+                machineTimeout: TimeSpan.FromSeconds(30)),
+            serverFactory: factory,
+            signOut: new SessionSignOut(factory),
+            logger: NullLogger<SessionManager>.Instance);
     }
 }

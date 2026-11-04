@@ -1,11 +1,12 @@
 using MachineSessionManager.Email;
+using MachineSessionManager.Idira;
+using MachineSessionManager.Security;
 using MachineSessionManager.Sessions;
 using Microsoft.Extensions.Logging;
 using SessionManager = MachineSessionManager.Sessions.MachineSessionManager;
 
 namespace MachineSessionManager;
 
-// Owns the application workflow. Dependencies are provided once by Program's DI setup.
 public sealed class SessionJob
 {
     private readonly SessionSettings _session;
@@ -16,29 +17,58 @@ public sealed class SessionJob
 
     private readonly ILogger<SessionJob> _logger;
 
+    private readonly ImpersonationSettings _impersonationSettings;
+
+    private readonly IIdiraCredentialProvider _credentialProvider;
+
+    private readonly IWindowsImpersonation _impersonation;
+
     public SessionJob(
         SessionSettings session,
         SessionManager sessionManager,
         EmailNotification emailNotification,
+        ImpersonationSettings impersonationSettings,
+        IIdiraCredentialProvider credentialProvider,
+        IWindowsImpersonation impersonation,
         ILogger<SessionJob> logger)
     {
         _session = session;
         _sessionManager = sessionManager;
         _emailNotification = emailNotification;
+        _impersonationSettings = impersonationSettings;
+        _credentialProvider = credentialProvider;
+        _impersonation = impersonation;
         _logger = logger;
     }
 
     public async Task<int> RunAsync(CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("Starting {Mode} for {User} on {Count} machine(s)",
-            _session.ModeType, _session.UserName, _session.Machines.Count);
+        cancellationToken.ThrowIfCancellationRequested();
 
-        var results = await _sessionManager.ExecuteAsync(cancellationToken);
+        _logger.LogInformation(
+            "Starting {Mode} for {User} on {Count} machine(s)",
+            _session.ModeType,
+            _session.UserName,
+            _session.Machines.Count);
+
+        var password = await _credentialProvider.GetPasswordAsync(_impersonationSettings.UserName, cancellationToken);
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var results = await _impersonation.RunAsync(
+            _impersonationSettings.UserName,
+            password,
+            () => _sessionManager.ExecuteAsync(cancellationToken));
+
         foreach (var result in results)
         {
-            _logger.LogInformation("{Machine} | {User} | {SessionId} | {Status} | {Details}",
-                result.Machine, result.UserName ?? "Unknown", result.SessionId?.ToString() ?? "-",
-                result.Status, result.Details);
+            _logger.LogInformation(
+                "{Machine} | {User} | {SessionId} | {Status} | {Details}",
+                result.Machine,
+                result.UserName ?? "Unknown",
+                result.SessionId?.ToString() ?? "-",
+                result.Status,
+                result.Details);
         }
 
         try
@@ -51,7 +81,6 @@ public sealed class SessionJob
         }
         catch (Exception ex)
         {
-            // Exit codes belong to the job, not the email notification or SMTP sender.
             _logger.LogError(ex, "Session checks completed, but the email report failed");
             return 2;
         }

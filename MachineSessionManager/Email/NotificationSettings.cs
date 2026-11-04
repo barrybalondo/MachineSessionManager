@@ -1,6 +1,5 @@
 namespace MachineSessionManager.Email;
 
-// Notification policy and message addressing, independent of the SMTP connection.
 public sealed class NotificationSettings
 {
     public NotificationModeType NotificationModeType { get; }

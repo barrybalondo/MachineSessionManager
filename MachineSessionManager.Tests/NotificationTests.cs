@@ -34,7 +34,8 @@ public sealed class NotificationTests
     [MemberData(nameof(Outcomes))]
     public void RelevantIncludesActivityAndErrorsButNotAnEmptyMachine(SessionStatusType status)
     {
-        Assert.Equal(status != SessionStatusType.NotSignedIn,
+        Assert.Equal(
+            status != SessionStatusType.NotSignedIn,
             Create(NotificationModeType.Relevant).ShouldSend([Result(status)]));
     }
 
@@ -47,12 +48,23 @@ public sealed class NotificationTests
     [Fact]
     public async Task NotificationSuppliesAddressesAndReportToTheSender()
     {
-        var settings = new NotificationSettings(NotificationModeType.Always, "sender@example.com",
-            ["alice@example.com"], ["copy@example.com"], ["blind@example.com"]);
-        var session = new SessionSettings(SessionModeType.Check, "alice", ["VM"], TimeSpan.FromSeconds(30));
+        var settings = new NotificationSettings(
+            notificationMode: NotificationModeType.Always,
+            from: "sender@example.com",
+            to: ["alice@example.com"],
+            cc: ["copy@example.com"],
+            bcc: ["blind@example.com"]);
+        var session = new SessionSettings(
+            mode: SessionModeType.Check,
+            userName: "alice",
+            machines: ["VM"],
+            machineTimeout: TimeSpan.FromSeconds(30));
         var sender = new FakeEmailSender();
-        var notification = new EmailNotification(settings, new ReportBuilder(session), sender,
-            NullLogger<EmailNotification>.Instance);
+        var notification = new EmailNotification(
+            settings: settings,
+            reportBuilder: new ReportBuilder(session),
+            emailSender: sender,
+            logger: NullLogger<EmailNotification>.Instance);
 
         await notification.NotifyAsync([Result(SessionStatusType.SignedIn)]);
 
@@ -67,14 +79,32 @@ public sealed class NotificationTests
 
     private static EmailNotification Create(NotificationModeType notificationMode)
     {
-        var settings = new NotificationSettings(notificationMode, "sender@example.com", ["alice@example.com"], [], []);
-        var session = new SessionSettings(SessionModeType.Check, "alice", ["VM"], TimeSpan.FromSeconds(30));
-        return new EmailNotification(settings, new ReportBuilder(session), new FakeEmailSender(),
-            NullLogger<EmailNotification>.Instance);
+        var settings = new NotificationSettings(
+            notificationMode: notificationMode,
+            from: "sender@example.com",
+            to: ["alice@example.com"],
+            cc: [],
+            bcc: []);
+        var session = new SessionSettings(
+            mode: SessionModeType.Check,
+            userName: "alice",
+            machines: ["VM"],
+            machineTimeout: TimeSpan.FromSeconds(30));
+        return new EmailNotification(
+            settings: settings,
+            reportBuilder: new ReportBuilder(session),
+            emailSender: new FakeEmailSender(),
+            logger: NullLogger<EmailNotification>.Instance);
     }
 
     private static SessionResult Result(SessionStatusType status)
     {
-        return new SessionResult("VM", null, null, "-", status, "Test result");
+        return new SessionResult(
+            machine: "VM",
+            sessionId: null,
+            userName: null,
+            state: "-",
+            status: status,
+            details: "Test result");
     }
 }

@@ -1,7 +1,9 @@
 using MachineSessionManager.Configuration;
 using MachineSessionManager.Email;
+using MachineSessionManager.Idira;
 using MachineSessionManager.Native;
 using MachineSessionManager.Reporting;
+using MachineSessionManager.Security;
 using MachineSessionManager.Sessions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -41,9 +43,26 @@ internal static class Program
             var session = SettingsLoader.LoadSession(builder.Configuration);
             var notification = SettingsLoader.LoadNotification(builder.Configuration);
             var email = SettingsLoader.LoadEmail(builder.Configuration);
+            var idira = SettingsLoader.LoadIdira(builder.Configuration);
+            var impersonation = SettingsLoader.LoadImpersonation(builder.Configuration);
+
             builder.Services.AddSingleton(session);
             builder.Services.AddSingleton(notification);
             builder.Services.AddSingleton(email);
+            builder.Services.AddSingleton(idira);
+            builder.Services.AddSingleton(impersonation);
+
+            builder.Services.AddSingleton(
+                _ => new HttpClient(
+                    new HttpClientHandler
+                    {
+                        AllowAutoRedirect = false
+                    })
+                {
+                    Timeout = TimeSpan.FromSeconds(60)
+                });
+            builder.Services.AddSingleton<IIdiraCredentialProvider, IdiraClient>();
+            builder.Services.AddSingleton<IWindowsImpersonation, WindowsImpersonation>();
             builder.Services.AddSingleton<IWtsServerFactory, WtsServerFactory>();
             builder.Services.AddSingleton<SessionManager>();
             builder.Services.AddSingleton<SessionSignOut>();

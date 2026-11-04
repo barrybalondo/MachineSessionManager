@@ -4,8 +4,6 @@ using Microsoft.Extensions.Logging;
 
 namespace MachineSessionManager.Email;
 
-// Owns the notification decision and coordinates report creation/delivery.
-// SMTP connections and MIME messages belong to EmailSender.
 public sealed class EmailNotification
 {
     private readonly NotificationSettings _settings;
@@ -50,7 +48,12 @@ public sealed class EmailNotification
         }
 
         var report = _reportBuilder.Build(results);
-        var message = new EmailMessage(_settings.From, _settings.To, _settings.Cc, _settings.Bcc, report);
+        var message = new EmailMessage(
+            from: _settings.From,
+            to: _settings.To,
+            cc: _settings.Cc,
+            bcc: _settings.Bcc,
+            report: report);
         await _emailSender.SendAsync(message, cancellationToken);
         _logger.LogInformation("Email report sent to {Count} primary recipient(s)", _settings.To.Count);
     }

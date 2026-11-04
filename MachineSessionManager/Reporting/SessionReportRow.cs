@@ -17,7 +17,13 @@ public sealed class SessionReportRow
     public string Color { get; }
 
     public SessionReportRow(
-        string machine, string userName, string session, string state, string status, string details, string color)
+        string machine,
+        string userName,
+        string session,
+        string state,
+        string status,
+        string details,
+        string color)
     {
         Machine = machine;
         UserName = userName;

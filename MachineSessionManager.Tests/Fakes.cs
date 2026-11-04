@@ -1,5 +1,7 @@
 using MachineSessionManager.Email;
+using MachineSessionManager.Idira;
 using MachineSessionManager.Native;
+using MachineSessionManager.Security;
 
 namespace MachineSessionManager.Tests;
 
@@ -95,17 +97,21 @@ internal sealed class FakeEmailSender : IEmailSender
 
     private readonly Exception? _error;
 
+    private readonly Action? _onSend;
+
     private readonly List<EmailMessage> _messages = [];
 
-    public FakeEmailSender(bool fail = false, Exception? error = null)
+    public FakeEmailSender(bool fail = false, Exception? error = null, Action? onSend = null)
     {
         _fail = fail;
         _error = error;
+        _onSend = onSend;
     }
 
 
     public Task SendAsync(EmailMessage message, CancellationToken cancellationToken = default)
     {
+        _onSend?.Invoke();
         if (_error is not null)
         {
             throw _error;
@@ -118,5 +124,71 @@ internal sealed class FakeEmailSender : IEmailSender
 
         _messages.Add(message);
         return Task.CompletedTask;
+    }
+}
+
+internal sealed class FakeIdiraCredentialProvider : IIdiraCredentialProvider
+{
+    public const string Password = "test-password";
+
+    public int CallCount { get; private set; }
+
+    public string? RequestedUserName { get; private set; }
+
+    private readonly Exception? _error;
+
+    private readonly Action? _onGet;
+
+    public FakeIdiraCredentialProvider(Exception? error = null, Action? onGet = null)
+    {
+        _error = error;
+        _onGet = onGet;
+    }
+
+    public Task<string> GetPasswordAsync(string userName, CancellationToken cancellationToken = default)
+    {
+        CallCount++;
+        RequestedUserName = userName;
+        _onGet?.Invoke();
+        return _error is null ? Task.FromResult(Password) : Task.FromException<string>(_error);
+    }
+}
+
+internal sealed class FakeWindowsImpersonation : IWindowsImpersonation
+{
+    public int CallCount { get; private set; }
+
+    public string? CurrentUserName => _currentUserName.Value;
+
+    public string? ReceivedPassword { get; private set; }
+
+    private readonly AsyncLocal<string?> _currentUserName = new();
+
+    private readonly Exception? _error;
+
+    public FakeWindowsImpersonation(Exception? error = null)
+    {
+        _error = error;
+    }
+
+    public async Task<T> RunAsync<T>(string userName, string password, Func<Task<T>> action)
+    {
+        CallCount++;
+        ReceivedPassword = password;
+        if (_error is not null)
+        {
+            throw _error;
+        }
+
+        var previous = _currentUserName.Value;
+        _currentUserName.Value = userName;
+        try
+        {
+            return await action();
+        }
+        finally
+        {
+            _currentUserName.Value = previous;
+        }
     }
 }

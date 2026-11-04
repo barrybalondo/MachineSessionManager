@@ -29,39 +29,38 @@ public sealed class ReportBuilder
 
         var subject = $"Machine Session {action} - {_settings.UserName} - {outcome}";
 
-        var templateFile = Path.Combine(
-            AppContext.BaseDirectory, "Templates", TemplateFileName);
+        var templateFile = Path.Combine(AppContext.BaseDirectory, "Templates", TemplateFileName);
 
         var template = Template.Parse(File.ReadAllText(templateFile));
         if (template.HasErrors)
         {
-            throw new InvalidOperationException(
-                $"Invalid {TemplateFileName}: " + string.Join("; ", template.Messages));
+            throw new InvalidOperationException($"Invalid {TemplateFileName}: " + string.Join("; ", template.Messages));
         }
 
         var model = new SessionReportModel(
-            Html(_settings.UserName),
-            Html(action),
-            runTime.ToString("yyyy-MM-dd HH:mm:ss zzz"),
-            _settings.Machines.Count,
+            userName: Html(_settings.UserName),
+            action: Html(action),
+            runTime: runTime.ToString("yyyy-MM-dd HH:mm:ss zzz"),
+            machineCount: _settings.Machines.Count,
             // Failed identity queries have an ID but are not confirmed matching sessions.
-            results.Count(r => r.UserName is not null),
-            activityCount,
-            issueCount,
-            results.Select(r => new SessionReportRow(
-                Html(r.Machine),
-                Html(r.UserName ?? "Unknown"),
-                r.SessionId?.ToString() ?? "-",
-                Html(r.State),
-                Html(FormatStatus(r.Status)),
-                Html(r.Details),
-                r.Status switch
-                {
-                    SessionStatusType.Success or SessionStatusType.AlreadySignedOut => "#15803d",
-                    SessionStatusType.SignedIn => "#1d4ed8",
-                    SessionStatusType.NotSignedIn => "#64748b",
-                    _ => "#b45309"
-                })));
+            sessionCount: results.Count(r => r.UserName is not null),
+            activityCount: activityCount,
+            issueCount: issueCount,
+            results: results.Select(
+                r => new SessionReportRow(
+                    machine: Html(r.Machine),
+                    userName: Html(r.UserName ?? "Unknown"),
+                    session: r.SessionId?.ToString() ?? "-",
+                    state: Html(r.State),
+                    status: Html(FormatStatus(r.Status)),
+                    details: Html(r.Details),
+                    color: r.Status switch
+                    {
+                        SessionStatusType.Success or SessionStatusType.AlreadySignedOut => "#15803d",
+                        SessionStatusType.SignedIn => "#1d4ed8",
+                        SessionStatusType.NotSignedIn => "#64748b",
+                        _ => "#b45309"
+                    })));
 
         var htmlBody = template.Render(model, member => member.Name);
         var plainTextBody = BuildPlainText(results, runTime);

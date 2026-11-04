@@ -9,9 +9,18 @@ public sealed class ReportBuilderTests
     [Fact]
     public void TemplateRendersResultsAndEscapesHtmlValues()
     {
-        var builder = new ReportBuilder(new SessionSettings(SessionModeType.Check, "DOMAIN\\alice", ["VM"], TimeSpan.FromSeconds(30)));
-        var result = new SessionResult("<VM>&", 7, "DOMAIN\\<alice>", "Active",
-            SessionStatusType.SignedIn, "<script>alert('test')</script>");
+        var builder = new ReportBuilder(new SessionSettings(
+            mode: SessionModeType.Check,
+            userName: "DOMAIN\\alice",
+            machines: ["VM"],
+            machineTimeout: TimeSpan.FromSeconds(30)));
+        var result = new SessionResult(
+            machine: "<VM>&",
+            sessionId: 7,
+            userName: "DOMAIN\\<alice>",
+            state: "Active",
+            status: SessionStatusType.SignedIn,
+            details: "<script>alert('test')</script>");
 
         var report = builder.Build([result]);
 
@@ -28,8 +37,18 @@ public sealed class ReportBuilderTests
     [Fact]
     public void FailedIdentityQueryIsAnIssueAndNotACountedMatchingSession()
     {
-        var builder = new ReportBuilder(new SessionSettings(SessionModeType.Check, "alice", ["VM"], TimeSpan.FromSeconds(30)));
-        var result = new SessionResult("VM", 7, null, "Active", SessionStatusType.AccessDenied, "Denied");
+        var builder = new ReportBuilder(new SessionSettings(
+            mode: SessionModeType.Check,
+            userName: "alice",
+            machines: ["VM"],
+            machineTimeout: TimeSpan.FromSeconds(30)));
+        var result = new SessionResult(
+            machine: "VM",
+            sessionId: 7,
+            userName: null,
+            state: "Active",
+            status: SessionStatusType.AccessDenied,
+            details: "Denied");
 
         var report = builder.Build([result]);
 

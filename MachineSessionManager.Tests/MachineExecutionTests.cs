@@ -16,30 +16,36 @@ public sealed class MachineExecutionTests
         var firstStarted = Signal();
         var middleFinished = Signal();
         var lastFinished = Signal();
-        var settings = new SessionSettings(SessionModeType.Check, "DOMAIN\\alice",
-            ["Z-FIRST", "MIDDLE", "A-LAST"], TimeSpan.FromSeconds(30));
-        var factory = new FakeWtsServerFactory(machine =>
-        {
-            if (machine == "Z-FIRST")
+        var settings = new SessionSettings(
+            mode: SessionModeType.Check,
+            userName: "DOMAIN\\alice",
+            machines: ["Z-FIRST", "MIDDLE", "A-LAST"],
+            machineTimeout: TimeSpan.FromSeconds(30));
+        var factory = new FakeWtsServerFactory(
+            machine =>
             {
-                firstStarted.TrySetResult();
-                Assert.True(releaseFirst.Wait(TimeSpan.FromSeconds(10)));
-            }
-
-            return new FakeWtsServer([Session(7), Session(2)], id =>
-            {
-                if (id == 2 && machine == "MIDDLE")
+                if (machine == "Z-FIRST")
                 {
-                    middleFinished.TrySetResult();
-                }
-                else if (id == 2 && machine == "A-LAST")
-                {
-                    lastFinished.TrySetResult();
+                    firstStarted.TrySetResult();
+                    Assert.True(releaseFirst.Wait(TimeSpan.FromSeconds(10)));
                 }
 
-                return Alice();
+                return new FakeWtsServer(
+                    [Session(7), Session(2)],
+                    id =>
+                    {
+                        if (id == 2 && machine == "MIDDLE")
+                        {
+                            middleFinished.TrySetResult();
+                        }
+                        else if (id == 2 && machine == "A-LAST")
+                        {
+                            lastFinished.TrySetResult();
+                        }
+
+                        return Alice();
+                    });
             });
-        });
         var execution = Create(settings, factory).ExecuteAsync();
         try
         {
@@ -55,20 +61,25 @@ public sealed class MachineExecutionTests
 
         var results = await execution.WaitAsync(TimeSpan.FromSeconds(5));
 
-        Assert.Equal(new[] { "Z-FIRST", "Z-FIRST", "MIDDLE", "MIDDLE", "A-LAST", "A-LAST" },
+        Assert.Equal(
+            new[] { "Z-FIRST", "Z-FIRST", "MIDDLE", "MIDDLE", "A-LAST", "A-LAST" },
             results.Select(result => result.Machine));
         Assert.Equal(new int?[] { 7, 2, 7, 2, 7, 2 }, results.Select(result => result.SessionId));
         Assert.Throws<NotSupportedException>(() => ((IList<SessionResult>)results).Clear());
 
         var report = new ReportBuilder(settings).Build(results);
-        Assert.True(report.PlainTextBody.IndexOf("Z-FIRST", StringComparison.Ordinal) <
-            report.PlainTextBody.IndexOf("MIDDLE", StringComparison.Ordinal));
-        Assert.True(report.PlainTextBody.IndexOf("MIDDLE", StringComparison.Ordinal) <
-            report.PlainTextBody.IndexOf("A-LAST", StringComparison.Ordinal));
-        Assert.True(report.HtmlBody.IndexOf("Z-FIRST", StringComparison.Ordinal) <
-            report.HtmlBody.IndexOf("MIDDLE", StringComparison.Ordinal));
-        Assert.True(report.HtmlBody.IndexOf("MIDDLE", StringComparison.Ordinal) <
-            report.HtmlBody.IndexOf("A-LAST", StringComparison.Ordinal));
+        Assert.True(
+            report.PlainTextBody.IndexOf("Z-FIRST", StringComparison.Ordinal) <
+                report.PlainTextBody.IndexOf("MIDDLE", StringComparison.Ordinal));
+        Assert.True(
+            report.PlainTextBody.IndexOf("MIDDLE", StringComparison.Ordinal) <
+                report.PlainTextBody.IndexOf("A-LAST", StringComparison.Ordinal));
+        Assert.True(
+            report.HtmlBody.IndexOf("Z-FIRST", StringComparison.Ordinal) <
+                report.HtmlBody.IndexOf("MIDDLE", StringComparison.Ordinal));
+        Assert.True(
+            report.HtmlBody.IndexOf("MIDDLE", StringComparison.Ordinal) <
+                report.HtmlBody.IndexOf("A-LAST", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -77,21 +88,28 @@ public sealed class MachineExecutionTests
         using var release = new ManualResetEventSlim();
         var queryStarted = Signal();
         var disposed = Signal();
-        var blocked = new FakeWtsServer([Session(1), Session(2)], id =>
-        {
-            if (id == 2)
+        var blocked = new FakeWtsServer(
+            [Session(1), Session(2)],
+            id =>
             {
-                queryStarted.TrySetResult();
-                Assert.True(release.Wait(TimeSpan.FromSeconds(10)));
-            }
+                if (id == 2)
+                {
+                    queryStarted.TrySetResult();
+                    Assert.True(release.Wait(TimeSpan.FromSeconds(10)));
+                }
 
-            return Alice();
-        }, dispose: () => disposed.TrySetResult());
-        var factory = new FakeWtsServerFactory(machine => machine == "SLOW"
-            ? blocked
-            : new FakeWtsServer([Session(3)], _ => Alice()));
-        var settings = new SessionSettings(SessionModeType.Check, "DOMAIN\\alice",
-            ["SLOW", "FAST"], TimeSpan.FromSeconds(1));
+                return Alice();
+            },
+            dispose: () => disposed.TrySetResult());
+        var factory = new FakeWtsServerFactory(
+            machine => machine == "SLOW"
+                ? blocked
+                : new FakeWtsServer([Session(3)], _ => Alice()));
+        var settings = new SessionSettings(
+            mode: SessionModeType.Check,
+            userName: "DOMAIN\\alice",
+            machines: ["SLOW", "FAST"],
+            machineTimeout: TimeSpan.FromSeconds(1));
         var execution = Create(settings, factory).ExecuteAsync();
         try
         {
@@ -99,7 +117,8 @@ public sealed class MachineExecutionTests
             var results = await execution.WaitAsync(TimeSpan.FromSeconds(5));
 
             Assert.Equal(new[] { "SLOW", "SLOW", "FAST" }, results.Select(result => result.Machine));
-            Assert.Equal(new[] { SessionStatusType.SignedIn, SessionStatusType.TimedOut, SessionStatusType.SignedIn },
+            Assert.Equal(
+                new[] { SessionStatusType.SignedIn, SessionStatusType.TimedOut, SessionStatusType.SignedIn },
                 results.Select(result => result.Status));
             Assert.Equal(new int?[] { 1, 2, 3 }, results.Select(result => result.SessionId));
             Assert.True(results[1].IsIssue);
@@ -126,16 +145,26 @@ public sealed class MachineExecutionTests
         var logoffStarted = Signal();
         var signOutDisposed = Signal();
         var discoveryDisposed = Signal();
-        var discovery = new FakeWtsServer([Session(1), Session(2)], _ => Alice(),
+        var discovery = new FakeWtsServer(
+            [Session(1), Session(2)],
+            _ => Alice(),
             dispose: () => discoveryDisposed.TrySetResult());
-        var signOut = new FakeWtsServer([], _ => Alice(), logoff: _ =>
-        {
-            logoffStarted.TrySetResult();
-            Assert.True(release.Wait(TimeSpan.FromSeconds(10)));
-        }, dispose: () => signOutDisposed.TrySetResult());
+        var signOut = new FakeWtsServer(
+            sessions: [],
+            readUser: _ => Alice(),
+            logoff: _ =>
+            {
+                logoffStarted.TrySetResult();
+                Assert.True(release.Wait(TimeSpan.FromSeconds(10)));
+            },
+            dispose: () => signOutDisposed.TrySetResult());
         var opens = 0;
         var factory = new FakeWtsServerFactory(_ => Interlocked.Increment(ref opens) == 1 ? discovery : signOut);
-        var settings = new SessionSettings(SessionModeType.SignOut, "DOMAIN\\alice", ["VM"], TimeSpan.FromSeconds(1));
+        var settings = new SessionSettings(
+            mode: SessionModeType.SignOut,
+            userName: "DOMAIN\\alice",
+            machines: ["VM"],
+            machineTimeout: TimeSpan.FromSeconds(1));
         var execution = Create(settings, factory).ExecuteAsync();
         try
         {
@@ -168,17 +197,25 @@ public sealed class MachineExecutionTests
         using var release = new ManualResetEventSlim();
         var queryStarted = Signal();
         var disposed = Signal();
-        var blocked = new FakeWtsServer([Session(1)], _ =>
-        {
-            queryStarted.TrySetResult();
-            Assert.True(release.Wait(TimeSpan.FromSeconds(10)));
-            return Alice();
-        }, dispose: () => disposed.TrySetResult());
+        var blocked = new FakeWtsServer(
+            [Session(1)],
+            _ =>
+            {
+                queryStarted.TrySetResult();
+                Assert.True(release.Wait(TimeSpan.FromSeconds(10)));
+                return Alice();
+            },
+            dispose: () => disposed.TrySetResult());
         var opens = 0;
-        var factory = new FakeWtsServerFactory(_ => Interlocked.Increment(ref opens) == 1
-            ? blocked
-            : new FakeWtsServer([Session(1)], _ => Alice(), protocol: _ => 0));
-        var settings = new SessionSettings(SessionModeType.SignOut, "DOMAIN\\alice", ["VM"], TimeSpan.FromSeconds(1));
+        var factory = new FakeWtsServerFactory(
+            _ => Interlocked.Increment(ref opens) == 1
+                ? blocked
+                : new FakeWtsServer([Session(1)], _ => Alice(), protocol: _ => 0));
+        var settings = new SessionSettings(
+            mode: SessionModeType.SignOut,
+            userName: "DOMAIN\\alice",
+            machines: ["VM"],
+            machineTimeout: TimeSpan.FromSeconds(1));
         var manager = Create(settings, factory);
         var execution = manager.ExecuteAsync();
         try
@@ -210,18 +247,26 @@ public sealed class MachineExecutionTests
         var opened = Signal();
         var disposed = Signal();
         var reads = 0;
-        var server = new FakeWtsServer([Session(1)], _ =>
-        {
-            Interlocked.Increment(ref reads);
-            return Alice();
-        }, dispose: () => disposed.TrySetResult());
-        var factory = new FakeWtsServerFactory(_ =>
-        {
-            opened.TrySetResult();
-            Assert.True(release.Wait(TimeSpan.FromSeconds(10)));
-            return server;
-        });
-        var settings = new SessionSettings(SessionModeType.SignOut, "DOMAIN\\alice", ["VM"], TimeSpan.FromSeconds(30));
+        var server = new FakeWtsServer(
+            [Session(1)],
+            _ =>
+            {
+                Interlocked.Increment(ref reads);
+                return Alice();
+            },
+            dispose: () => disposed.TrySetResult());
+        var factory = new FakeWtsServerFactory(
+            _ =>
+            {
+                opened.TrySetResult();
+                Assert.True(release.Wait(TimeSpan.FromSeconds(10)));
+                return server;
+            });
+        var settings = new SessionSettings(
+            mode: SessionModeType.SignOut,
+            userName: "DOMAIN\\alice",
+            machines: ["VM"],
+            machineTimeout: TimeSpan.FromSeconds(30));
         var execution = Create(settings, factory).ExecuteAsync(cancellation.Token);
         try
         {
@@ -249,21 +294,31 @@ public sealed class MachineExecutionTests
         using var cancellation = new CancellationTokenSource();
         cancellation.Cancel();
         var opens = 0;
-        var factory = new FakeWtsServerFactory(_ =>
-        {
-            Interlocked.Increment(ref opens);
-            return new FakeWtsServer([], _ => Alice());
-        });
-        var settings = new SessionSettings(SessionModeType.Check, "DOMAIN\\alice", ["VM"], TimeSpan.FromSeconds(30));
+        var factory = new FakeWtsServerFactory(
+            _ =>
+            {
+                Interlocked.Increment(ref opens);
+                return new FakeWtsServer([], _ => Alice());
+            });
+        var settings = new SessionSettings(
+            mode: SessionModeType.Check,
+            userName: "DOMAIN\\alice",
+            machines: ["VM"],
+            machineTimeout: TimeSpan.FromSeconds(30));
 
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Create(settings, factory).ExecuteAsync(cancellation.Token));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => Create(settings, factory).ExecuteAsync(cancellation.Token));
 
         Assert.Equal(0, Volatile.Read(ref opens));
     }
 
     private static SessionManager Create(SessionSettings settings, IWtsServerFactory factory)
     {
-        return new SessionManager(settings, factory, new SessionSignOut(factory), NullLogger<SessionManager>.Instance);
+        return new SessionManager(
+            settings: settings,
+            serverFactory: factory,
+            signOut: new SessionSignOut(factory),
+            logger: NullLogger<SessionManager>.Instance);
     }
 
     private static TaskCompletionSource Signal()

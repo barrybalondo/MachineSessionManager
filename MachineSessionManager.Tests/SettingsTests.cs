@@ -8,6 +8,71 @@ namespace MachineSessionManager.Tests;
 
 public sealed class SettingsTests
 {
+    [Fact]
+    public void CredentialSettingsLoadIndependentlyOfTheTargetSessionUser()
+    {
+        var configuration = Configuration(
+            new Dictionary<string, string?>
+            {
+                ["Idira:BaseUrl"] = "https://ccp.example.com",
+                ["Idira:AppId"] = " MachineSessionManager ",
+                ["Idira:Safe"] = " ServiceAccounts ",
+                ["Impersonation:UserName"] = " svc_sessions@company.com ",
+                ["Session:UserName"] = "DOMAIN\\alice"
+            });
+
+        var idira = SettingsLoader.LoadIdira(configuration);
+        var impersonation = SettingsLoader.LoadImpersonation(configuration);
+
+        Assert.Equal("https://ccp.example.com", idira.BaseUrl);
+        Assert.Equal(" MachineSessionManager ", idira.AppId);
+        Assert.Equal(" ServiceAccounts ", idira.Safe);
+        Assert.Equal(" svc_sessions@company.com ", impersonation.UserName);
+    }
+
+    [Theory]
+    [InlineData("Idira:BaseUrl")]
+    [InlineData("Idira:AppId")]
+    [InlineData("Idira:Safe")]
+    public void MissingCredentialProviderSettingsAreRejected(string missingKey)
+    {
+        var values = new Dictionary<string, string?>
+        {
+            ["Idira:BaseUrl"] = "https://ccp.example.com",
+            ["Idira:AppId"] = "MachineSessionManager",
+            ["Idira:Safe"] = "ServiceAccounts"
+        };
+        values.Remove(missingKey);
+
+        var error = Assert.Throws<InvalidOperationException>(() => SettingsLoader.LoadIdira(Configuration(values)));
+
+        Assert.Contains(missingKey, error.Message);
+    }
+
+    [Theory]
+    [InlineData("svc_sessions@company.com")]
+    [InlineData("DOMAIN\\svc_sessions")]
+    public void ImpersonationSupportsUpnAndDomainQualifiedNamesWithoutADomainSetting(string userName)
+    {
+        var settings = SettingsLoader.LoadImpersonation(Configuration(
+            new Dictionary<string, string?>
+            {
+                ["Impersonation:UserName"] = userName
+            }));
+
+        Assert.Equal(userName, settings.UserName);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public void MissingImpersonationAccountIsRejected(string? userName)
+    {
+        var configuration = Configuration(new Dictionary<string, string?> { ["Impersonation:UserName"] = userName });
+
+        Assert.Throws<InvalidOperationException>(() => SettingsLoader.LoadImpersonation(configuration));
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("")]
@@ -15,12 +80,13 @@ public sealed class SettingsTests
     [InlineData("Automatic")]
     public void MissingOrInvalidSessionModeIsRejected(string? mode)
     {
-        var configuration = Configuration(new Dictionary<string, string?>
-        {
-            ["Session:ModeType"] = mode,
-            ["Session:UserName"] = "DOMAIN\\alice",
-            ["Session:Machines:0"] = "VM"
-        });
+        var configuration = Configuration(
+            new Dictionary<string, string?>
+            {
+                ["Session:ModeType"] = mode,
+                ["Session:UserName"] = "DOMAIN\\alice",
+                ["Session:Machines:0"] = "VM"
+            });
 
         Assert.Throws<InvalidOperationException>(() => SettingsLoader.LoadSession(configuration));
     }
@@ -32,11 +98,12 @@ public sealed class SettingsTests
     [InlineData("Sometimes")]
     public void MissingOrInvalidNotificationModeIsRejected(string? notificationMode)
     {
-        var configuration = Configuration(new Dictionary<string, string?>
-        {
-            ["Notification:NotificationModeType"] = notificationMode,
-            ["Notification:From"] = "sender@example.com"
-        });
+        var configuration = Configuration(
+            new Dictionary<string, string?>
+            {
+                ["Notification:NotificationModeType"] = notificationMode,
+                ["Notification:From"] = "sender@example.com"
+            });
 
         Assert.Throws<InvalidOperationException>(() => SettingsLoader.LoadNotification(configuration));
     }
@@ -44,15 +111,16 @@ public sealed class SettingsTests
     [Fact]
     public void ExplicitModesAreReadAndMachineNamesAreNormalized()
     {
-        var configuration = Configuration(new Dictionary<string, string?>
-        {
-            ["Session:ModeType"] = "sIgNoUt",
-            ["Session:MachineTimeout"] = "00:01:00",
-            ["Session:UserName"] = " DOMAIN\\alice ",
-            ["Session:Machines:0"] = " VM ",
-            ["Session:Machines:1"] = "vm",
-            ["Notification:NotificationModeType"] = "Always"
-        });
+        var configuration = Configuration(
+            new Dictionary<string, string?>
+            {
+                ["Session:ModeType"] = "sIgNoUt",
+                ["Session:MachineTimeout"] = "00:01:00",
+                ["Session:UserName"] = " DOMAIN\\alice ",
+                ["Session:Machines:0"] = " VM ",
+                ["Session:Machines:1"] = "vm",
+                ["Notification:NotificationModeType"] = "Always"
+            });
 
         var session = SettingsLoader.LoadSession(configuration);
         var notification = SettingsLoader.LoadNotification(configuration);
@@ -69,8 +137,17 @@ public sealed class SettingsTests
     {
         string[] machines = ["VM"];
         string[] recipients = ["alice@example.com"];
-        var session = new SessionSettings(SessionModeType.Check, "alice", machines, TimeSpan.FromSeconds(30));
-        var notification = new NotificationSettings(NotificationModeType.Never, "", recipients, [], []);
+        var session = new SessionSettings(
+            mode: SessionModeType.Check,
+            userName: "alice",
+            machines: machines,
+            machineTimeout: TimeSpan.FromSeconds(30));
+        var notification = new NotificationSettings(
+            notificationMode: NotificationModeType.Never,
+            from: "",
+            to: recipients,
+            cc: [],
+            bcc: []);
 
         machines[0] = "CHANGED";
         recipients[0] = "changed@example.com";
@@ -87,13 +164,14 @@ public sealed class SettingsTests
     [InlineData("invalid")]
     public void MissingOrMalformedMachineTimeoutIsRejected(string? timeout)
     {
-        var configuration = Configuration(new Dictionary<string, string?>
-        {
-            ["Session:ModeType"] = "Check",
-            ["Session:UserName"] = "alice",
-            ["Session:Machines:0"] = "VM",
-            ["Session:MachineTimeout"] = timeout
-        });
+        var configuration = Configuration(
+            new Dictionary<string, string?>
+            {
+                ["Session:ModeType"] = "Check",
+                ["Session:UserName"] = "alice",
+                ["Session:Machines:0"] = "VM",
+                ["Session:MachineTimeout"] = timeout
+            });
 
         var error = Assert.Throws<InvalidOperationException>(() => SettingsLoader.LoadSession(configuration));
 
@@ -106,13 +184,14 @@ public sealed class SettingsTests
     [InlineData("50.00:00:00")]
     public void OutOfRangeMachineTimeoutIsRejected(string timeout)
     {
-        var configuration = Configuration(new Dictionary<string, string?>
-        {
-            ["Session:ModeType"] = "Check",
-            ["Session:UserName"] = "alice",
-            ["Session:Machines:0"] = "VM",
-            ["Session:MachineTimeout"] = timeout
-        });
+        var configuration = Configuration(
+            new Dictionary<string, string?>
+            {
+                ["Session:ModeType"] = "Check",
+                ["Session:UserName"] = "alice",
+                ["Session:Machines:0"] = "VM",
+                ["Session:MachineTimeout"] = timeout
+            });
 
         Assert.Throws<ArgumentOutOfRangeException>(() => SettingsLoader.LoadSession(configuration));
     }
@@ -120,12 +199,13 @@ public sealed class SettingsTests
     [Fact]
     public void SmtpSettingsLoadIndependentlyOfNotificationPolicy()
     {
-        var configuration = Configuration(new Dictionary<string, string?>
-        {
-            ["Email:Host"] = "smtp.example.com",
-            ["Email:Port"] = "587",
-            ["Email:UseSsl"] = "true"
-        });
+        var configuration = Configuration(
+            new Dictionary<string, string?>
+            {
+                ["Email:Host"] = "smtp.example.com",
+                ["Email:Port"] = "587",
+                ["Email:UseSsl"] = "true"
+            });
 
         var email = SettingsLoader.LoadEmail(configuration);
 
@@ -137,10 +217,11 @@ public sealed class SettingsTests
     [Fact]
     public void NeverCanBeConfiguredWithoutSmtpDetails()
     {
-        var configuration = Configuration(new Dictionary<string, string?>
-        {
-            ["Notification:NotificationModeType"] = "Never"
-        });
+        var configuration = Configuration(
+            new Dictionary<string, string?>
+            {
+                ["Notification:NotificationModeType"] = "Never"
+            });
 
         var notification = SettingsLoader.LoadNotification(configuration);
         var email = SettingsLoader.LoadEmail(configuration);
@@ -153,11 +234,12 @@ public sealed class SettingsTests
     [Fact]
     public void LegacyEmailWhenCannotReplaceRequiredNotificationMode()
     {
-        var configuration = Configuration(new Dictionary<string, string?>
-        {
-            ["Email:When"] = "Always",
-            ["Notification:From"] = "sender@example.com"
-        });
+        var configuration = Configuration(
+            new Dictionary<string, string?>
+            {
+                ["Email:When"] = "Always",
+                ["Notification:From"] = "sender@example.com"
+            });
 
         var error = Assert.Throws<InvalidOperationException>(() => SettingsLoader.LoadNotification(configuration));
 
@@ -167,15 +249,16 @@ public sealed class SettingsTests
     [Fact]
     public void AddressesAreReadFromTheNotificationSection()
     {
-        var configuration = Configuration(new Dictionary<string, string?>
-        {
-            ["Notification:NotificationModeType"] = "Relevant",
-            ["Notification:From"] = "sender@example.com",
-            ["Notification:To:0"] = "alice@example.com",
-            ["Notification:Cc:0"] = "copy@example.com",
-            ["Notification:Bcc:0"] = "blind@example.com",
-            ["Email:To:0"] = "old-address@example.com"
-        });
+        var configuration = Configuration(
+            new Dictionary<string, string?>
+            {
+                ["Notification:NotificationModeType"] = "Relevant",
+                ["Notification:From"] = "sender@example.com",
+                ["Notification:To:0"] = "alice@example.com",
+                ["Notification:Cc:0"] = "copy@example.com",
+                ["Notification:Bcc:0"] = "blind@example.com",
+                ["Email:To:0"] = "old-address@example.com"
+            });
 
         var notification = SettingsLoader.LoadNotification(configuration);
 
@@ -189,7 +272,12 @@ public sealed class SettingsTests
     public void EmailMessagesOwnReadOnlyCopiesOfTheirAddresses()
     {
         string[] recipients = ["alice@example.com"];
-        var message = new EmailMessage("sender@example.com", recipients, [], [], new EmailReport("Subject", "HTML", "Text"));
+        var message = new EmailMessage(
+            from: "sender@example.com",
+            to: recipients,
+            cc: [],
+            bcc: [],
+            report: new EmailReport("Subject", "HTML", "Text"));
 
         recipients[0] = "changed@example.com";
 
@@ -200,12 +288,13 @@ public sealed class SettingsTests
     [Fact]
     public void MissingMachineListIsRejected()
     {
-        var configuration = Configuration(new Dictionary<string, string?>
-        {
-            ["Session:ModeType"] = "Check",
-            ["Session:MachineTimeout"] = "00:01:00",
-            ["Session:UserName"] = "alice"
-        });
+        var configuration = Configuration(
+            new Dictionary<string, string?>
+            {
+                ["Session:ModeType"] = "Check",
+                ["Session:MachineTimeout"] = "00:01:00",
+                ["Session:UserName"] = "alice"
+            });
 
         Assert.Throws<ArgumentException>(() => SettingsLoader.LoadSession(configuration));
     }

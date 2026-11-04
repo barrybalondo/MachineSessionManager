@@ -1,6 +1,5 @@
 namespace MachineSessionManager.Email;
 
-// SMTP transport configuration. Message addressing and policy belong to NotificationSettings.
 public sealed class EmailSettings
 {
     public string Host { get; }
@@ -9,10 +8,7 @@ public sealed class EmailSettings
 
     public bool UseSsl { get; }
 
-    public EmailSettings(
-        string host,
-        int? port,
-        bool useSsl)
+    public EmailSettings(string host, int? port, bool useSsl)
     {
         Host = host;
         Port = port;

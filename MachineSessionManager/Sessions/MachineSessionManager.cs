@@ -34,13 +34,13 @@ public sealed class MachineSessionManager
             .ToArray();
 
         // WhenAll returns results in task/input order, regardless of completion order.
-        // Each machine also retains the session order returned by Windows.
         var machineResults = await Task.WhenAll(tasks);
         return Array.AsReadOnly(machineResults.SelectMany(results => results).ToArray());
     }
 
     private async Task<IReadOnlyList<SessionResult>> ExecuteMachineWithTimeoutAsync(
-        string machine, CancellationToken cancellationToken)
+        string machine,
+        CancellationToken cancellationToken)
     {
         using var machineCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var machineToken = machineCancellation.Token;
@@ -57,8 +57,12 @@ public sealed class MachineSessionManager
         catch (TimeoutException)
         {
             machineCancellation.Cancel();
-            var results = progress.Complete(MakeResult(machine, null, null, SessionStatusType.TimedOut,
-                $"Machine check exceeded {_settings.MachineTimeout:c}. Any remaining sessions were not checked."));
+            var results = progress.Complete(MakeResult(
+                machine: machine,
+                session: null,
+                user: null,
+                status: SessionStatusType.TimedOut,
+                details: $"Machine check exceeded {_settings.MachineTimeout:c}. Any remaining sessions were not checked."));
             _ = ObserveCompletionAsync(work, machine);
             return results;
         }
@@ -72,7 +76,9 @@ public sealed class MachineSessionManager
     }
 
     private async Task ExecuteMachineAsync(
-        string machine, MachineSessionProgress progress, CancellationToken cancellationToken)
+        string machine,
+        MachineSessionProgress progress,
+        CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         try
@@ -85,8 +91,12 @@ public sealed class MachineSessionManager
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 WindowsSessionUser? user = null;
-                progress.SetPending(MakeResult(machine, session, null, SessionStatusType.TimedOut,
-                    $"Session query exceeded the machine timeout of {_settings.MachineTimeout:c}. Any remaining sessions were not checked."));
+                progress.SetPending(MakeResult(
+                    machine: machine,
+                    session: session,
+                    user: null,
+                    status: SessionStatusType.TimedOut,
+                    details: $"Session query exceeded the machine timeout of {_settings.MachineTimeout:c}. Any remaining sessions were not checked."));
                 try
                 {
                     user = server.GetUser(session.Id);
@@ -100,14 +110,27 @@ public sealed class MachineSessionManager
                     SessionResult result;
                     if (_settings.ModeType == SessionModeType.SignOut)
                     {
-                        progress.SetPending(MakeResult(machine, session, user, SessionStatusType.NotConfirmed,
-                            "Machine check timed out during sign-out; the request may already have reached Windows. Any remaining sessions were not checked."));
-                        result = await _signOut.ExecuteAsync(machine, session, user, cancellationToken);
+                        progress.SetPending(MakeResult(
+                            machine: machine,
+                            session: session,
+                            user: user,
+                            status: SessionStatusType.NotConfirmed,
+                            details: "Machine check timed out during sign-out; the request may already have reached Windows. Any remaining sessions were not checked."));
+                        result = await _signOut.ExecuteAsync(
+                            machine: machine,
+                            session: session,
+                            originalUser: user,
+                            cancellationToken: cancellationToken);
                         cancellationToken.ThrowIfCancellationRequested();
                     }
                     else if (_settings.ModeType == SessionModeType.Check)
                     {
-                        result = MakeResult(machine, session, user, SessionStatusType.SignedIn, "Session detected.");
+                        result = MakeResult(
+                            machine: machine,
+                            session: session,
+                            user: user,
+                            status: SessionStatusType.SignedIn,
+                            details: "Session detected.");
                     }
                     else
                     {
@@ -124,15 +147,24 @@ public sealed class MachineSessionManager
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     // Preserve other results; an unreadable account is not NotSignedIn.
-                    progress.Add(MakeResult(machine, session, user, Classify(ex), ex.Message));
+                    progress.Add(MakeResult(
+                        machine: machine,
+                        session: session,
+                        user: user,
+                        status: Classify(ex),
+                        details: ex.Message));
                 }
             }
 
             cancellationToken.ThrowIfCancellationRequested();
             if (!progress.HasResults)
             {
-                progress.Add(MakeResult(machine, null, null, SessionStatusType.NotSignedIn,
-                    "No matching user session found."));
+                progress.Add(MakeResult(
+                    machine: machine,
+                    session: null,
+                    user: null,
+                    status: SessionStatusType.NotSignedIn,
+                    details: "No matching user session found."));
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -142,7 +174,12 @@ public sealed class MachineSessionManager
         catch (Exception ex)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            progress.Add(MakeResult(machine, null, null, Classify(ex), ex.Message));
+            progress.Add(MakeResult(
+                machine: machine,
+                session: null,
+                user: null,
+                status: Classify(ex),
+                details: ex.Message));
         }
     }
 

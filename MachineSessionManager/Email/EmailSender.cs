@@ -1,4 +1,3 @@
-using MachineSessionManager.Configuration;
 using MailKit.Security;
 using MimeKit;
 using SmtpClient = MailKit.Net.Smtp.SmtpClient;
@@ -20,8 +19,7 @@ public sealed class EmailSender : IEmailSender
             string.IsNullOrWhiteSpace(_settings.Host))
         {
             throw new InvalidOperationException(
-                $"{ConfigurationKeys.Notification.FromPath}, {ConfigurationKeys.Notification.ToPath}, " +
-                $"and {ConfigurationKeys.Email.HostPath} are required when emailing.");
+                "Notification:From, Notification:To, and Email:Host are required when emailing.");
         }
 
         var message = new MimeMessage();

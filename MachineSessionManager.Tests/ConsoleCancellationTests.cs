@@ -31,11 +31,12 @@ public sealed class ConsoleCancellationTests
     {
         using var cancellation = new ConsoleCancellation();
         var token = cancellation.Token;
-        using var registration = token.Register(() =>
-        {
-            cancellation.Dispose();
-            Assert.True(token.WaitHandle.WaitOne(0));
-        });
+        using var registration = token.Register(
+            () =>
+            {
+                cancellation.Dispose();
+                Assert.True(token.WaitHandle.WaitOne(0));
+            });
 
         cancellation.Cancel();
 
@@ -49,12 +50,13 @@ public sealed class ConsoleCancellationTests
         var token = cancellation.Token;
         var callbackStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         using var finishCallback = new ManualResetEventSlim();
-        using var registration = token.Register(() =>
-        {
-            callbackStarted.SetResult();
-            Assert.True(finishCallback.Wait(TimeSpan.FromSeconds(10)));
-            Assert.True(token.WaitHandle.WaitOne(0));
-        });
+        using var registration = token.Register(
+            () =>
+            {
+                callbackStarted.SetResult();
+                Assert.True(finishCallback.Wait(TimeSpan.FromSeconds(10)));
+                Assert.True(token.WaitHandle.WaitOne(0));
+            });
 
         var cancelling = Task.Run(cancellation.Cancel);
         try
