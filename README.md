@@ -1,74 +1,74 @@
 # MachineSessionManager
 
-A Windows-only .NET 8 console job for checking a user's sessions across configured machines, signing out matching RDP sessions, and sending a consolidated email report. Remote operations use a dedicated Windows account whose password is retrieved from Idira.
+A .NET 8 console job that checks a user's sessions across Windows machines. It can also sign out matching RDP sessions and email a report.
+
+Remote access uses a separate Windows account. Its password is fetched from Idira at the start of each run.
 
 ## Quick start
 
-Requires Windows and the .NET 8 SDK. Edit [appsettings.json](MachineSessionManager/appsettings.json) with your machine names, accounts, and CCP settings, then run from the repository root:
+Requires Windows and the .NET 8 SDK. Replace the sample values in [appsettings.json](MachineSessionManager/appsettings.json) with your machines, accounts, and CCP settings. From the repository root:
 
 ```powershell
 dotnet build MachineSessionManager.sln
 dotnet run --project MachineSessionManager -- --Session:ModeType=Check --Notification:NotificationModeType=Never
 ```
 
-To run sign-out mode:
+To sign out matching RDP sessions:
 
 ```powershell
 dotnet run --project MachineSessionManager -- --Session:ModeType=SignOut
 ```
 
-Command-line arguments override the corresponding configuration values for that execution. You can also open `MachineSessionManager.sln` in Visual Studio and run the configured job.
+Pass a setting on the command line to override it for that run. In Visual Studio, open `MachineSessionManager.sln` and run the project with the settings in `appsettings.json`.
 
 ## Configuration
 
-Settings are read from `MachineSessionManager/appsettings.json`. The supplied values are placeholders.
-
 | Setting | Required | Description |
 | --- | --- | --- |
-| `Session:ModeType` | Yes | `Check` reports matching sessions; `SignOut` ends matching RDP sessions. |
-| `Session:UserName` | Yes | Target user as reported by Windows, preferably `DOMAIN\user`. |
-| `Session:Machines` | Yes | Array of target machine names, such as `["MACHINE01", "MACHINE02"]`. Names are trimmed and deduplicated. |
-| `Session:MachineTimeout` | Yes | Positive duration such as `00:01:00`, covering discovery, session checks, and sign-out verification per machine. |
-| `Idira:BaseUrl` | Yes | HTTPS CCP server base URL without a trailing slash, such as `https://ccp.company.com`. |
-| `Idira:AppId` | Yes | Application ID registered with the credential provider, such as `MachineSessionManager`. |
-| `Idira:Safe` | Yes | Safe containing the service account, such as `ServiceAccounts`. |
-| `Impersonation:UserName` | Yes | Account performing remote operations, in UPN or `DOMAIN\user` format. Must match the Vault account's `UserName` property. |
-| `Notification:NotificationModeType` | Yes | `Never` disables email; `Relevant` sends for matching sessions or issues; `Always` sends after every completed session batch. |
+| `Session:ModeType` | Yes | `Check` lists matching sessions. `SignOut` signs out matching RDP sessions. |
+| `Session:UserName` | Yes | User to check, preferably `DOMAIN\user`. |
+| `Session:Machines` | Yes | Machine names, e.g. `["MACHINE01", "MACHINE02"]`. Names are trimmed and duplicates removed. |
+| `Session:MachineTimeout` | Yes | Time allowed per machine, including discovery, session checks, and sign-out verification. Must be positive, e.g. `00:01:00`. |
+| `Idira:BaseUrl` | Yes | HTTPS CCP base URL, e.g. `https://ccp.company.com`. Omit the trailing slash. |
+| `Idira:AppId` | Yes | Application ID registered with CCP, e.g. `MachineSessionManager`. |
+| `Idira:Safe` | Yes | Safe holding the service account, e.g. `ServiceAccounts`. |
+| `Impersonation:UserName` | Yes | Windows account used for remote access, as a UPN or `DOMAIN\user`. Must match the Vault account's `UserName`. |
+| `Notification:NotificationModeType` | Yes | `Never`: no email. `Relevant`: matching sessions or issues. `Always`: every completed run. |
 | `Notification:From` | When sending email | Sender email address. |
-| `Notification:To` | When sending email | Array of primary recipient addresses. At least one recipient is required. |
-| `Notification:Cc` | No | Array of copy recipients; use `[]` for none. |
-| `Notification:Bcc` | No | Array of blind-copy recipients; use `[]` for none. |
+| `Notification:To` | When sending email | Array of recipient addresses. At least one is required. |
+| `Notification:Cc` | No | Array of CC addresses. Use `[]` for none. |
+| `Notification:Bcc` | No | Array of BCC addresses. Use `[]` for none. |
 | `Email:Host` | When sending email | SMTP relay hostname. |
-| `Email:Port` | No | Explicit SMTP port, or `null` to use MailKit defaults. |
-| `Email:UseSsl` | No | `true` requires STARTTLS, typically on port 587. `false` disables TLS and is the default. |
+| `Email:Port` | No | SMTP port. Leave as `null` to use MailKit's defaults. |
+| `Email:UseSsl` | No | `true` requires STARTTLS, usually on port 587. Defaults to `false` (no TLS). |
 
-`Session:UserName` selects whose sessions are checked; `Impersonation:UserName` is the separate account authorized to manage them. In JSON, write a domain-qualified name as `"DOMAIN\\user"`. A bare target username matches that name in any domain.
+`Session:UserName` is the user being checked. `Impersonation:UserName` is the account doing the work. In JSON, write a domain-qualified name as `"DOMAIN\\user"`. A target username without a domain matches that username in any domain.
 
-Mode names are case-insensitive and must be configured explicitly. Email uses an unauthenticated SMTP relay; use a trusted internal relay when TLS is disabled.
+Both mode settings are required. Mode values ignore case. Email uses an SMTP relay without authentication. If TLS is off, use a trusted internal relay.
 
 ## Credentials and access
 
-The job retrieves the password once per execution through the [CCP GET API](https://docs.cyberark.com/credential-providers/latest/en/content/ccp/calling-the-web-service-using-rest.htm), using AppID, Safe, and the impersonation username. The password is read from `Content`, then used for Windows batch logon and remote WTS operations. Email and reporting run outside impersonation.
+The job calls the [CCP GET API](https://docs.cyberark.com/credential-providers/latest/en/content/ccp/calling-the-web-service-using-rest.htm) once per run, using AppID, Safe, and the impersonation username. Those values must resolve to one Vault account. The password comes from `Content` and is used for Windows batch logon and remote WTS calls. Reporting and email run under the account that started the job.
 
-The lookup must identify exactly one account. Credential retrieval or Windows logon failure stops remote work without falling back to the scheduled task identity. Provider errors retain their status and error text for debugging. Passwords must not be stored in configuration, and successful credential responses are not logged.
+If the lookup or Windows logon fails, the job stops. It does not fall back to the scheduled task account. CCP errors include the HTTP status and the provider's error text. Keep passwords out of configuration; successful credential responses are not logged.
 
-Required permissions:
+The host and accounts need:
 
-- The job host and AppID must have existing CCP authorization and Safe retrieval access. The HTTPS endpoint must be reachable and trusted.
-- The impersonation account needs **Log on as a batch job** on the job host and must not be denied that right. Domain authentication must be available.
-- On target machines, the impersonation account needs RDS **Query Information** permission for checks and **Reset** permission for sign-outs, plus network/firewall access.
+- Existing CCP authorization for the host and AppID, access to retrieve from the Safe, and a reachable HTTPS endpoint with a trusted certificate.
+- **Log on as a batch job** for the impersonation account on the job host, with no policy denying that right. The host must be able to authenticate the domain account.
+- RDS **Query Information** permission for the impersonation account on target machines for checks, and **Reset** permission for sign-outs. Firewalls must allow the remote connections.
 
-The scheduled task account needs application, configuration, CCP, and SMTP access. Remote session permissions belong to the impersonation account.
+The scheduled task account needs access to the app, configuration, CCP, and SMTP relay. The impersonation account needs the remote session permissions.
 
 ## Session behavior
 
-Check mode reports matching sessions. SignOut ends matching active or disconnected RDP sessions, rechecks session ownership before logoff, and verifies completion afterward. Console and other non-RDP sessions are skipped during sign-out. Ending a session closes applications and can discard unsaved work.
+`Check` lists matching sessions. `SignOut` signs out matching active or disconnected RDP sessions. The job checks session ownership again before sign-out, then verifies that the session ended. Sign-out skips console and other non-RDP sessions. Signing out closes applications and can lose unsaved work.
 
-Machines run concurrently, with results kept in configured machine order. Access-denied, unreachable, and unreadable-session errors are reported as issues rather than as no matching session.
+Machines are checked in parallel. Results follow the order in `Session:Machines`. Access denied, unreachable machines, and failures to read a session are reported as issues.
 
-Timeouts preserve completed results and report unfinished work as `TimedOut`, or `NotConfirmed` if sign-out was in progress. Timeouts and Ctrl+C cannot interrupt a Windows call already in progress or undo an already-submitted logoff.
+When a machine times out, completed results are kept. Unfinished work is marked `TimedOut`, or `NotConfirmed` if a sign-out was in progress. A timeout or Ctrl+C cannot interrupt a Windows call already running or undo a sign-out already submitted.
 
-Relevant notifications include errors, skipped operations, timeouts, and unconfirmed sign-outs. Fatal startup, credential, or impersonation failures and cancelled jobs do not send a consolidated session report; errors are written to the console. An email failure returns exit code 2 even if remote operations have already completed.
+`Relevant` emails include matching sessions, errors, skipped operations, timeouts, and unconfirmed sign-outs. Startup, credential, or impersonation failures and cancelled runs do not send a report; check the console output for the error. If sending email fails, the job returns exit code `2` even if the session work has already finished.
 
 ## Deployment
 
@@ -78,20 +78,20 @@ Publish a Windows executable:
 dotnet publish MachineSessionManager -c Release -r win-x64 --self-contained false -o C:\Apps\MachineSessionManager
 ```
 
-This deployment requires the .NET 8 runtime on the job host. Use `--self-contained true` to include the runtime instead.
+Install the .NET 8 runtime on the job host, or publish with `--self-contained true` to include it.
 
-For Task Scheduler, configure:
+Create two Task Scheduler entries using the same executable:
 
 - Program: `C:\Apps\MachineSessionManager\MachineSessionManager.exe`
 - Arguments: `--Session:ModeType=Check` or `--Session:ModeType=SignOut`
 - Start in: `C:\Apps\MachineSessionManager`
 
-Separate Check and SignOut tasks can use different schedules. Prevent overlapping executions of the same job.
+Give Check and SignOut their own schedules. Set each task to skip starting another instance while it is already running.
 
 ## Exit codes
 
 | Code | Meaning |
 | --- | --- |
-| `0` | Completed without session issues. |
-| `1` | Completed with an error, skipped operation, timeout, or unconfirmed sign-out. |
-| `2` | Fatal configuration, credential, impersonation, or email failure, or cancellation. |
+| `0` | Finished without session issues. |
+| `1` | Finished with an error, skipped operation, timeout, or unconfirmed sign-out. |
+| `2` | Configuration, credential, impersonation, or email failure, or the run was cancelled. |
