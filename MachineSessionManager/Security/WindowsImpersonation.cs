@@ -21,6 +21,18 @@ public sealed class WindowsImpersonation : IWindowsImpersonation
 
     public async Task<T> RunAsync<T>(string userName, string password, Func<Task<T>> action)
     {
+        using var caller = WindowsIdentity.GetCurrent();
+
+        _logger.LogInformation(
+            "Creating Windows batch logon for {Account} from {Identity}",
+            userName,
+            caller.Name);
+        _logger.LogInformation(
+            "App directory: {AppDirectory}; runtime directory: {RuntimeDirectory}; process architecture: {Architecture}",
+            AppContext.BaseDirectory,
+            RuntimeEnvironment.GetRuntimeDirectory(),
+            RuntimeInformation.ProcessArchitecture);
+
         using var token = LogOn(userName, password);
 
         // RunImpersonatedAsync carries the identity across await and Task.Run. The runtime

@@ -146,6 +146,14 @@ public sealed class MachineSessionManager
                 catch (Exception ex)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
+
+                    _logger.LogError(
+                        ex,
+                        "WTS session check failed for {SessionId} on {Machine} using wtsapi32.dll (HRESULT: 0x{HResult:X8})",
+                        session.Id,
+                        machine,
+                        ex.HResult);
+
                     // Preserve other results; an unreadable account is not NotSignedIn.
                     progress.Add(MakeResult(
                         machine: machine,
@@ -174,6 +182,13 @@ public sealed class MachineSessionManager
         catch (Exception ex)
         {
             cancellationToken.ThrowIfCancellationRequested();
+
+            _logger.LogError(
+                ex,
+                "WTS machine check failed on {Machine} using wtsapi32.dll (HRESULT: 0x{HResult:X8})",
+                machine,
+                ex.HResult);
+
             progress.Add(MakeResult(
                 machine: machine,
                 session: null,
