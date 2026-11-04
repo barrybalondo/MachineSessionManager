@@ -28,15 +28,29 @@ public sealed class EmailNotification
 
     public bool ShouldSend(IReadOnlyList<SessionResult> results)
     {
-        return _settings.NotificationModeType switch
+        bool shouldSend;
+
+        switch (_settings.NotificationModeType)
         {
-            NotificationModeType.Never => false,
-            NotificationModeType.Always => true,
-            // Includes detected/signed-out sessions and every query/logoff error.
-            // A fully checked run containing only NotSignedIn results is irrelevant.
-            NotificationModeType.Relevant => results.Any(result => result.IsRelevant),
-            _ => throw new InvalidOperationException("Unsupported email notification mode.")
-        };
+            case NotificationModeType.Never:
+                shouldSend = false;
+                break;
+
+            case NotificationModeType.Always:
+                shouldSend = true;
+                break;
+
+            case NotificationModeType.Relevant:
+                // Includes detected/signed-out sessions and every query/logoff error.
+                // A fully checked run containing only NotSignedIn results is irrelevant.
+                shouldSend = results.Any(result => result.IsRelevant);
+                break;
+
+            default:
+                throw new InvalidOperationException("Unsupported email notification mode.");
+        }
+
+        return shouldSend;
     }
 
     public async Task NotifyAsync(IReadOnlyList<SessionResult> results, CancellationToken cancellationToken = default)
@@ -44,6 +58,7 @@ public sealed class EmailNotification
         if (!ShouldSend(results))
         {
             _logger.LogInformation("Email skipped (notification mode: {Mode})", _settings.NotificationModeType);
+
             return;
         }
 
@@ -54,7 +69,9 @@ public sealed class EmailNotification
             cc: _settings.Cc,
             bcc: _settings.Bcc,
             report: report);
+
         await _emailSender.SendAsync(message, cancellationToken);
+
         _logger.LogInformation("Email report sent to {Count} primary recipient(s)", _settings.To.Count);
     }
 }

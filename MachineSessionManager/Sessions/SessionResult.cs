@@ -14,12 +14,12 @@ public sealed class SessionResult
 
     public string Details { get; }
 
-    public bool IsIssue => Status is SessionStatusType.Skipped
-        or SessionStatusType.AccessDenied
-        or SessionStatusType.Unreachable
-        or SessionStatusType.NotConfirmed
-        or SessionStatusType.TimedOut
-        or SessionStatusType.Error;
+    public bool IsIssue => Status == SessionStatusType.Skipped
+        || Status == SessionStatusType.AccessDenied
+        || Status == SessionStatusType.Unreachable
+        || Status == SessionStatusType.NotConfirmed
+        || Status == SessionStatusType.TimedOut
+        || Status == SessionStatusType.Error;
 
     public bool IsRelevant => Status != SessionStatusType.NotSignedIn;
 

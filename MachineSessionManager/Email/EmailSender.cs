@@ -24,6 +24,7 @@ public sealed class EmailSender : IEmailSender
 
         var message = new MimeMessage();
         message.From.Add(MailboxAddress.Parse(email.From));
+
         foreach (var address in email.To)
         {
             message.To.Add(MailboxAddress.Parse(address));

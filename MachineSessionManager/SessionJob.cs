@@ -82,6 +82,7 @@ public sealed class SessionJob
         catch (Exception ex)
         {
             _logger.LogError(ex, "Session checks completed, but the email report failed");
+
             return 2;
         }
 

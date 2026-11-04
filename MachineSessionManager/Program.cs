@@ -26,6 +26,7 @@ internal static class Program
             if (!OperatingSystem.IsWindows())
             {
                 Log.Fatal("MachineSessionManager requires Windows.");
+
                 return 2;
             }
 
@@ -80,12 +81,14 @@ internal static class Program
             catch (OperationCanceledException) when (cancellation.Token.IsCancellationRequested)
             {
                 Log.Warning("Machine session job cancelled. Any submitted logoff may still complete.");
+
                 return 2;
             }
         }
         catch (Exception ex)
         {
             Log.Fatal(ex, "Machine session job failed");
+
             return 2;
         }
         finally

@@ -31,7 +31,9 @@ public sealed class WindowsImpersonation : IWindowsImpersonation
             () =>
             {
                 using var identity = WindowsIdentity.GetCurrent();
+
                 _logger.LogInformation("Remote session operations are running as {Identity}", identity.Name);
+
                 return action();
             });
     }
