@@ -48,14 +48,14 @@ Both mode settings are required. Mode values ignore case. Email uses an SMTP rel
 
 ## Credentials and access
 
-The job calls the [CCP GET API](https://docs.cyberark.com/credential-providers/latest/en/content/ccp/calling-the-web-service-using-rest.htm) once per run, using AppID, Safe, and the impersonation username. Those values must resolve to one Vault account. The password comes from `Content` and is used for Windows batch logon and remote WTS calls. Reporting and email run under the account that started the job.
+The job calls the [CCP GET API](https://docs.cyberark.com/credential-providers/latest/en/content/ccp/calling-the-web-service-using-rest.htm) once per run, using AppID, Safe, and the impersonation username. Those values must resolve to one Vault account. The password comes from `Content` and is used for outbound Windows credentials (`LOGON32_LOGON_NEW_CREDENTIALS`). Local file access, reporting, and email use the account that started the job.
 
-If the lookup or Windows logon fails, the job stops. It does not fall back to the scheduled task account. CCP errors include the HTTP status and the provider's error text. Keep passwords out of configuration; successful credential responses are not logged.
+CCP lookup or Windows token creation failures stop the job. The remote machine validates the password when the job connects. Remote access does not fall back to the scheduled task account. CCP errors include the HTTP status and the provider's error text. Keep passwords out of configuration; successful credential responses are not logged.
 
 The host and accounts need:
 
 - Existing CCP authorization for the host and AppID, access to retrieve from the Safe, and a reachable HTTPS endpoint with a trusted certificate.
-- **Log on as a batch job** for the impersonation account on the job host, with no policy denying that right. The host must be able to authenticate the domain account.
+- The remote machines must be able to authenticate the configured account.
 - RDS **Query Information** permission for the impersonation account on target machines for checks, and **Reset** permission for sign-outs. Firewalls must allow the remote connections.
 
 The scheduled task account needs access to the app, configuration, CCP, and SMTP relay. The impersonation account needs the remote session permissions.

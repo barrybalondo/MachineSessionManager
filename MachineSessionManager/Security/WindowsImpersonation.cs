@@ -8,9 +8,9 @@ namespace MachineSessionManager.Security;
 
 public sealed class WindowsImpersonation : IWindowsImpersonation
 {
-    private const int LogonBatch = 4;
+    private const int LogonNewCredentials = 9;
 
-    private const int LogonProviderDefault = 0;
+    private const int LogonProviderWinNt50 = 3;
 
     private readonly ILogger<WindowsImpersonation> _logger;
 
@@ -24,7 +24,7 @@ public sealed class WindowsImpersonation : IWindowsImpersonation
         using var caller = WindowsIdentity.GetCurrent();
 
         _logger.LogInformation(
-            "Creating Windows batch logon for {Account} from {Identity}",
+            "Creating outbound Windows credentials for {Account}; local identity: {Identity}",
             userName,
             caller.Name);
         _logger.LogInformation(
@@ -35,16 +35,19 @@ public sealed class WindowsImpersonation : IWindowsImpersonation
 
         using var token = LogOn(userName, password);
 
-        // RunImpersonatedAsync carries the identity across await and Task.Run. The runtime
+        // RunImpersonatedAsync carries the security context across await and Task.Run. The runtime
         // duplicates the token for its ExecutionContext, so timed-out native workers retain
-        // their identity until they return even after our original handle is disposed.
+        // that context until they return even after our original handle is disposed.
         return await WindowsIdentity.RunImpersonatedAsync(
             token,
             () =>
             {
                 using var identity = WindowsIdentity.GetCurrent();
 
-                _logger.LogInformation("Remote session operations are running as {Identity}", identity.Name);
+                _logger.LogInformation(
+                    "WTS outbound account: {Account}; local Windows identity: {Identity}",
+                    userName,
+                    identity.Name);
 
                 return action();
             });
@@ -65,14 +68,13 @@ public sealed class WindowsImpersonation : IWindowsImpersonation
         var passwordBuffer = Marshal.StringToHGlobalUni(password);
         try
         {
-            // Batch logon validates the password now and retains outbound credentials.
-            // The service account needs "Log on as a batch job" on this computer.
+            // Keep local file access; the remote machine validates the supplied credentials.
             if (!LogonUserW(
                 userName: account,
                 domain: domain,
                 password: passwordBuffer,
-                logonType: LogonBatch,
-                logonProvider: LogonProviderDefault,
+                logonType: LogonNewCredentials,
+                logonProvider: LogonProviderWinNt50,
                 token: out var token))
             {
                 var error = Marshal.GetLastWin32Error();
