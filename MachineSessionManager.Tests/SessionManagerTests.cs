@@ -184,16 +184,30 @@ public sealed class SessionManagerTests
     }
 
     [Theory]
-    [InlineData((ushort)0)]
-    [InlineData((ushort)1)]
-    public async Task NonRdpProtocolsAreSkippedEvenWithRdpStationNames(ushort protocol)
+    [InlineData("", WtsConnectionStateType.Disconnected, (ushort)0)]
+    [InlineData("RDP-Tcp#1", WtsConnectionStateType.Disconnected, (ushort)2)]
+    [InlineData("Console", WtsConnectionStateType.Active, (ushort)0)]
+    [InlineData("Legacy", WtsConnectionStateType.Disconnected, (ushort)1)]
+    public async Task SignOutEndsTheSessionThatCheckDetectedRegardlessOfProtocol(
+        string stationName,
+        WtsConnectionStateType state,
+        ushort protocol)
     {
-        var server = new FakeWtsServer([Session(1)], _ => Alice(), protocol: _ => protocol);
+        var signedOut = false;
+        var server = new FakeWtsServer(
+            sessions: [new WindowsSession(1, stationName, state)],
+            readUser: _ => signedOut ? new WindowsSessionUser("", "") : Alice(),
+            protocol: _ => protocol,
+            logoff: _ => signedOut = true);
+
+        var check = Assert.Single(await Create(SessionModeType.Check, server).ExecuteAsync());
+
+        Assert.Equal(SessionStatusType.SignedIn, check.Status);
 
         var result = Assert.Single(await Create(SessionModeType.SignOut, server).ExecuteAsync());
 
-        Assert.Equal(SessionStatusType.Skipped, result.Status);
-        Assert.Empty(server.LogoffRequests);
+        Assert.Equal(SessionStatusType.Success, result.Status);
+        Assert.Equal(new[] { 1 }, server.LogoffRequests);
     }
 
     [Fact]

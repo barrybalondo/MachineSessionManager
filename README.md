@@ -1,6 +1,6 @@
 # MachineSessionManager
 
-A .NET 8 console job that checks a user's sessions across Windows machines. It can also sign out matching RDP sessions and email a report.
+A .NET 8 console job that checks a user's sessions across Windows machines. It can also sign out matching user sessions and email a report.
 
 Remote access uses a separate Windows account. Its password is fetched from Idira at the start of each run.
 
@@ -13,7 +13,7 @@ dotnet build MachineSessionManager.sln
 dotnet run --project MachineSessionManager -- --Session:ModeType=Check --Notification:NotificationModeType=Never
 ```
 
-To sign out matching RDP sessions:
+To sign out matching user sessions:
 
 ```powershell
 dotnet run --project MachineSessionManager -- --Session:ModeType=SignOut
@@ -25,7 +25,7 @@ Pass a setting on the command line to override it for that run. In Visual Studio
 
 | Setting | Required | Description |
 | --- | --- | --- |
-| `Session:ModeType` | Yes | `Check` lists matching sessions. `SignOut` signs out matching RDP sessions. |
+| `Session:ModeType` | Yes | `Check` lists matching sessions. `SignOut` signs out matching user sessions. |
 | `Session:UserName` | Yes | User to check, preferably `DOMAIN\user`. |
 | `Session:Machines` | Yes | Machine names, e.g. `["MACHINE01", "MACHINE02"]`. Names are trimmed and duplicates removed. |
 | `Session:MachineTimeout` | Yes | Time allowed per machine, including discovery, session checks, and sign-out verification. Must be positive, e.g. `00:01:00`. |
@@ -62,7 +62,7 @@ The scheduled task account needs access to the app, configuration, CCP, and SMTP
 
 ## Session behavior
 
-`Check` lists matching sessions. `SignOut` signs out matching active or disconnected RDP sessions. The job checks session ownership again before sign-out, then verifies that the session ended. Sign-out skips console and other non-RDP sessions. Signing out closes applications and can lose unsaved work.
+`Check` lists matching sessions. `SignOut` signs out the configured user's sessions, including active, disconnected, and console sessions. The job checks session ownership again before sign-out, then verifies that the session ended. Signing out closes applications and can lose unsaved work.
 
 Machines are checked in parallel. Results follow the order in `Session:Machines`. Access denied, unreachable machines, and failures to read a session are reported as issues.
 

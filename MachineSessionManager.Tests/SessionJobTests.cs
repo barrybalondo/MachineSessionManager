@@ -355,11 +355,6 @@ public sealed class SessionJobTests
                 userQueries++;
                 return signedOut ? new WindowsSessionUser("", "") : new WindowsSessionUser("alice", "DOMAIN");
             },
-            protocol: _ =>
-            {
-                Assert.Equal(ImpersonationUser, impersonation.CurrentUserName);
-                return 2;
-            },
             logoff: _ =>
             {
                 Assert.Equal(ImpersonationUser, impersonation.CurrentUserName);

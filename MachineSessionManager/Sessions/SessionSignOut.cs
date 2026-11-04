@@ -9,8 +9,6 @@ public sealed class SessionSignOut
     // ERROR_CTX_WINSTATION_NOT_FOUND: the session no longer exists.
     private const int SessionNotFound = 7022;
 
-    private const ushort RdpProtocol = 2;
-
     private readonly IWtsServerFactory _serverFactory;
 
     public SessionSignOut(IWtsServerFactory serverFactory)
@@ -43,18 +41,6 @@ public sealed class SessionSignOut
                     user: originalUser,
                     status: SessionStatusType.AlreadySignedOut,
                     details: "The original account no longer owns this session; no logoff requested.");
-            }
-
-            var protocol = server.GetProtocolType(session.Id);
-            cancellationToken.ThrowIfCancellationRequested();
-            if (protocol != RdpProtocol)
-            {
-                return MakeResult(
-                    machine: machine,
-                    session: session,
-                    user: originalUser,
-                    status: SessionStatusType.Skipped,
-                    details: "Only RDP sessions are eligible; console or other protocol skipped.");
             }
 
             server.Logoff(session.Id);

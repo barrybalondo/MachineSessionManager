@@ -9,19 +9,14 @@ namespace MachineSessionManager.Tests;
 
 public sealed class SessionSignOutTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task EarlyReturnsDisposeTheOwnedConnection(bool ownershipChanged)
+    [Fact]
+    public async Task OwnershipChangeDisposesTheConnectionWithoutLogoff()
     {
         string? openedMachine = null;
         var disposals = 0;
         var server = new FakeWtsServer(
             sessions: [],
-            readUser: _ => ownershipChanged
-                ? new WindowsSessionUser("other", "DOMAIN")
-                : Alice(),
-            protocol: _ => 0,
+            readUser: _ => new WindowsSessionUser("other", "DOMAIN"),
             dispose: () => disposals++);
         var factory = new FakeWtsServerFactory(
             machine =>
@@ -33,7 +28,7 @@ public sealed class SessionSignOutTests
         var result = await new SessionSignOut(factory).ExecuteAsync("VM", Session(), Alice());
 
         Assert.Equal("VM", openedMachine);
-        Assert.Equal(ownershipChanged ? SessionStatusType.AlreadySignedOut : SessionStatusType.Skipped, result.Status);
+        Assert.Equal(SessionStatusType.AlreadySignedOut, result.Status);
         Assert.Equal(1, disposals);
         Assert.Empty(server.LogoffRequests);
     }
@@ -133,12 +128,10 @@ public sealed class SessionSignOutTests
     [Theory]
     [InlineData("Open")]
     [InlineData("User")]
-    [InlineData("Protocol")]
     public async Task CancellationBetweenNativeCallsPreventsLogoff(string cancelDuring)
     {
         using var cancellation = new CancellationTokenSource();
         var userReads = 0;
-        var protocolReads = 0;
         var disposed = false;
         var server = new FakeWtsServer(
             sessions: [],
@@ -151,16 +144,6 @@ public sealed class SessionSignOutTests
                 }
 
                 return Alice();
-            },
-            protocol: _ =>
-            {
-                protocolReads++;
-                if (cancelDuring == "Protocol")
-                {
-                    cancellation.Cancel();
-                }
-
-                return 2;
             },
             dispose: () => disposed = true);
         var factory = new FakeWtsServerFactory(
@@ -181,7 +164,6 @@ public sealed class SessionSignOutTests
         Assert.Empty(server.LogoffRequests);
         Assert.True(disposed);
         Assert.Equal(cancelDuring == "Open" ? 0 : 1, userReads);
-        Assert.Equal(cancelDuring == "Protocol" ? 1 : 0, protocolReads);
     }
 
     [Fact]
@@ -196,8 +178,7 @@ public sealed class SessionSignOutTests
                 machines.Add(machine);
                 var server = new FakeWtsServer(
                     sessions: [],
-                    readUser: _ => Alice(),
-                    protocol: _ => 0,
+                    readUser: _ => new WindowsSessionUser("other", "DOMAIN"),
                     dispose: () => disposals++);
                 connections.Add(server);
                 return server;
@@ -221,8 +202,7 @@ public sealed class SessionSignOutTests
         var signOutDisposed = false;
         var signOutServer = new FakeWtsServer(
             sessions: [],
-            readUser: _ => Alice(),
-            protocol: _ => 0,
+            readUser: _ => new WindowsSessionUser("other", "DOMAIN"),
             dispose: () => signOutDisposed = true);
         var opens = 0;
         var factory = new FakeWtsServerFactory(
@@ -245,7 +225,7 @@ public sealed class SessionSignOutTests
         var results = await manager.ExecuteAsync();
 
         Assert.Equal(
-            new[] { SessionStatusType.AccessDenied, SessionStatusType.Skipped },
+            new[] { SessionStatusType.AccessDenied, SessionStatusType.AlreadySignedOut },
             results.Select(result => result.Status));
         Assert.Equal(new int?[] { 1, 2 }, results.Select(result => result.SessionId));
         Assert.Equal(3, opens);

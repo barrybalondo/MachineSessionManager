@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using MachineSessionManager.Native;
 using MachineSessionManager.Reporting;
 using MachineSessionManager.Sessions;
@@ -210,7 +211,10 @@ public sealed class MachineExecutionTests
         var factory = new FakeWtsServerFactory(
             _ => Interlocked.Increment(ref opens) == 1
                 ? blocked
-                : new FakeWtsServer([Session(1)], _ => Alice(), protocol: _ => 0));
+                : new FakeWtsServer(
+                    sessions: [Session(1)],
+                    readUser: _ => Alice(),
+                    logoff: _ => throw new Win32Exception(5)));
         var settings = new SessionSettings(
             mode: SessionModeType.SignOut,
             userName: "DOMAIN\\alice",
@@ -225,7 +229,7 @@ public sealed class MachineExecutionTests
             Assert.Equal(SessionStatusType.TimedOut, first.Status);
 
             var second = Assert.Single(await manager.ExecuteAsync().WaitAsync(TimeSpan.FromSeconds(5)));
-            Assert.Equal(SessionStatusType.Skipped, second.Status);
+            Assert.Equal(SessionStatusType.AccessDenied, second.Status);
 
             release.Set();
             await disposed.Task.WaitAsync(TimeSpan.FromSeconds(5));
