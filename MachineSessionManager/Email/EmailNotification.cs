@@ -28,29 +28,24 @@ public sealed class EmailNotification
 
     public bool ShouldSend(IReadOnlyList<SessionResult> results)
     {
-        bool shouldSend;
-
-        switch (_settings.NotificationModeType)
+        if (_settings.NotificationModeType == NotificationModeType.Never)
         {
-            case NotificationModeType.Never:
-                shouldSend = false;
-                break;
-
-            case NotificationModeType.Always:
-                shouldSend = true;
-                break;
-
-            case NotificationModeType.Relevant:
-                // Includes detected/signed-out sessions and every query/logoff error.
-                // A fully checked run containing only NotSignedIn results is irrelevant.
-                shouldSend = results.Any(result => result.IsRelevant);
-                break;
-
-            default:
-                throw new InvalidOperationException("Unsupported email notification mode.");
+            return false;
         }
 
-        return shouldSend;
+        if (_settings.NotificationModeType == NotificationModeType.Always)
+        {
+            return true;
+        }
+
+        if (_settings.NotificationModeType == NotificationModeType.Relevant)
+        {
+            // Includes detected/signed-out sessions and every query/logoff error.
+            // A fully checked run containing only NotSignedIn results is irrelevant.
+            return results.Any(result => result.IsRelevant);
+        }
+
+        throw new InvalidOperationException("Unsupported email notification mode.");
     }
 
     public async Task NotifyAsync(IReadOnlyList<SessionResult> results, CancellationToken cancellationToken = default)
