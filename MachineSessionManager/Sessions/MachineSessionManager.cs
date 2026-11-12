@@ -29,12 +29,14 @@ public sealed class MachineSessionManager
     public async Task<IReadOnlyList<SessionResult>> ExecuteAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+
         var tasks = _settings.Machines
             .Select(machine => ExecuteMachineWithTimeoutAsync(machine, cancellationToken))
             .ToArray();
 
         // WhenAll returns results in task/input order, regardless of completion order.
         var machineResults = await Task.WhenAll(tasks);
+
         return Array.AsReadOnly(machineResults.SelectMany(results => results).ToArray());
     }
 
@@ -43,34 +45,42 @@ public sealed class MachineSessionManager
         CancellationToken cancellationToken)
     {
         using var machineCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
         var machineToken = machineCancellation.Token;
         var progress = new MachineSessionProgress();
 
         // The WTS calls are synchronous. The worker owns its handles and may outlive
         // our wait; never dispose its connection from the timeout/cancellation path.
         var work = Task.Run(() => ExecuteMachineAsync(machine, progress, machineToken), machineToken);
+
         try
         {
             await work.WaitAsync(_settings.MachineTimeout, cancellationToken);
+
             return progress.Complete();
         }
         catch (TimeoutException)
         {
             machineCancellation.Cancel();
+
             var results = progress.Complete(MakeResult(
                 machine: machine,
                 session: null,
                 user: null,
                 status: SessionStatusType.TimedOut,
                 details: $"Machine check exceeded {_settings.MachineTimeout:c}. Any remaining sessions were not checked."));
+
             _ = ObserveCompletionAsync(work, machine);
+
             return results;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             machineCancellation.Cancel();
             progress.Complete();
+
             _ = ObserveCompletionAsync(work, machine);
+
             throw;
         }
     }
@@ -81,26 +91,34 @@ public sealed class MachineSessionManager
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+
         try
         {
             using var server = _serverFactory.Open(machine);
+
             cancellationToken.ThrowIfCancellationRequested();
+
             var sessions = server.GetSessions();
 
             foreach (var session in sessions)
             {
                 cancellationToken.ThrowIfCancellationRequested();
+
                 WindowsSessionUser? user = null;
+
                 progress.SetPending(MakeResult(
                     machine: machine,
                     session: session,
                     user: null,
                     status: SessionStatusType.TimedOut,
                     details: $"Session query exceeded the machine timeout of {_settings.MachineTimeout:c}. Any remaining sessions were not checked."));
+
                 try
                 {
                     user = server.GetUser(session.Id);
+
                     cancellationToken.ThrowIfCancellationRequested();
+
                     if (string.IsNullOrWhiteSpace(user.UserName) || !IsMatch(user))
                     {
                         progress.SetPending(null);
@@ -108,6 +126,7 @@ public sealed class MachineSessionManager
                     }
 
                     SessionResult result;
+
                     if (_settings.ModeType == SessionModeType.SignOut)
                     {
                         progress.SetPending(MakeResult(
@@ -116,11 +135,13 @@ public sealed class MachineSessionManager
                             user: user,
                             status: SessionStatusType.NotConfirmed,
                             details: "Machine check timed out during sign-out; the request may already have reached Windows. Any remaining sessions were not checked."));
+
                         result = await _signOut.ExecuteAsync(
                             machine: machine,
                             session: session,
                             originalUser: user,
                             cancellationToken: cancellationToken);
+
                         cancellationToken.ThrowIfCancellationRequested();
                     }
                     else if (_settings.ModeType == SessionModeType.Check)
@@ -165,6 +186,7 @@ public sealed class MachineSessionManager
             }
 
             cancellationToken.ThrowIfCancellationRequested();
+
             if (!progress.HasResults)
             {
                 progress.Add(MakeResult(
@@ -217,6 +239,7 @@ public sealed class MachineSessionManager
     private bool IsMatch(WindowsSessionUser user)
     {
         var actual = _settings.UserName.Contains('\\') ? user.AccountName : user.UserName;
+
         return string.Equals(actual, _settings.UserName, StringComparison.OrdinalIgnoreCase);
     }
 }

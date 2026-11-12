@@ -29,6 +29,7 @@ public sealed class SessionSettings
         }
 
         var machineNames = machines.ToArray();
+
         if (machineNames.Length == 0 || machineNames.Any(string.IsNullOrWhiteSpace))
         {
             throw new ArgumentException("Specify at least one nonempty machine name.", nameof(machines));

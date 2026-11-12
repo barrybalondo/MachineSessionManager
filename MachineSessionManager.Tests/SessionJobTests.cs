@@ -52,6 +52,7 @@ public sealed class SessionJobTests
 
         Assert.Equal(exitCode, result);
         Assert.Equal(emailCount, sender.Reports.Count);
+
         if (machineError && emailCount > 0)
         {
             Assert.Contains("Unreachable", sender.Reports[0].PlainTextBody);
@@ -105,6 +106,7 @@ public sealed class SessionJobTests
             _ =>
             {
                 queried = true;
+
                 return new FakeWtsServer([], _ => new WindowsSessionUser("", ""));
             });
 
@@ -142,7 +144,9 @@ public sealed class SessionJobTests
     public async Task ATimeoutStillSendsRelevantEmailAndReturnsAnIssue()
     {
         var impersonation = new FakeWindowsImpersonation();
+
         using var release = new ManualResetEventSlim();
+
         var opened = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var disposed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var session = new SessionSettings(
@@ -156,6 +160,7 @@ public sealed class SessionJobTests
                 Assert.Equal(ImpersonationUser, impersonation.CurrentUserName);
                 opened.TrySetResult();
                 Assert.True(release.Wait(TimeSpan.FromSeconds(10)));
+
                 return new FakeWtsServer(
                     [],
                     _ => new WindowsSessionUser("", ""),
@@ -172,12 +177,15 @@ public sealed class SessionJobTests
             factory: factory,
             sender: sender,
             impersonation: impersonation).RunAsync();
+
         try
         {
             await opened.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
             var exitCode = await execution.WaitAsync(TimeSpan.FromSeconds(5));
 
             Assert.Equal(1, exitCode);
+
             var report = Assert.Single(sender.Reports);
             Assert.Contains("Timed Out", report.PlainTextBody);
             Assert.Contains("Timed Out", report.HtmlBody);
@@ -195,7 +203,9 @@ public sealed class SessionJobTests
     public async Task ACancelledJobDoesNotOpenMachinesOrSendEmail()
     {
         using var cancellation = new CancellationTokenSource();
+
         cancellation.Cancel();
+
         var session = new SessionSettings(
             mode: SessionModeType.Check,
             userName: "alice",
@@ -206,6 +216,7 @@ public sealed class SessionJobTests
             _ =>
             {
                 opened = true;
+
                 return new FakeWtsServer([], _ => new WindowsSessionUser("", ""));
             });
         var sender = new FakeEmailSender();
@@ -243,11 +254,13 @@ public sealed class SessionJobTests
             {
                 Assert.Equal(ImpersonationUser, impersonation.CurrentUserName);
                 Interlocked.Increment(ref opens);
+
                 return new FakeWtsServer(
                     [new WindowsSession(1, "RDP-Tcp#1", WtsConnectionStateType.Active)],
                     _ =>
                     {
                         Assert.Equal(ImpersonationUser, impersonation.CurrentUserName);
+
                         return new WindowsSessionUser("alice", "DOMAIN");
                     });
             });
@@ -287,6 +300,7 @@ public sealed class SessionJobTests
             _ =>
             {
                 opened = true;
+
                 return new FakeWtsServer([], _ => new WindowsSessionUser("", ""));
             });
         var session = new SessionSettings(
@@ -313,6 +327,7 @@ public sealed class SessionJobTests
     public async Task CancellationAfterRetrievalPreventsLogonAndRemoteWork()
     {
         using var cancellation = new CancellationTokenSource();
+
         var credentials = new FakeIdiraCredentialProvider(onGet: cancellation.Cancel);
         var impersonation = new FakeWindowsImpersonation();
         var factory = new FakeWtsServerFactory(_ => throw new InvalidOperationException("Must not open a machine."));
@@ -353,6 +368,7 @@ public sealed class SessionJobTests
             {
                 Assert.Equal(ImpersonationUser, impersonation.CurrentUserName);
                 userQueries++;
+
                 return signedOut ? new WindowsSessionUser("", "") : new WindowsSessionUser("alice", "DOMAIN");
             },
             logoff: _ =>
@@ -364,6 +380,7 @@ public sealed class SessionJobTests
             _ =>
             {
                 Assert.Equal(ImpersonationUser, impersonation.CurrentUserName);
+
                 return server;
             });
         var sender = new FakeEmailSender(onSend: () => Assert.Null(impersonation.CurrentUserName));
@@ -400,6 +417,7 @@ public sealed class SessionJobTests
             reportBuilder: new ReportBuilder(session),
             emailSender: sender,
             logger: NullLogger<EmailNotification>.Instance);
+
         return new SessionJob(
             session: session,
             sessionManager: new SessionManager(

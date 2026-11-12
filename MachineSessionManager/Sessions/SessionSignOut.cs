@@ -25,6 +25,7 @@ public sealed class SessionSignOut
         cancellationToken.ThrowIfCancellationRequested();
 
         using var server = _serverFactory.Open(machine);
+
         cancellationToken.ThrowIfCancellationRequested();
 
         try
@@ -32,7 +33,9 @@ public sealed class SessionSignOut
             // Session IDs can be reused. Recheck the exact account, including its domain,
             // immediately before acting, even when configuration uses a bare username.
             var currentUser = server.GetUser(session.Id);
+
             cancellationToken.ThrowIfCancellationRequested();
+
             if (!SameUser(originalUser, currentUser))
             {
                 return MakeResult(
@@ -65,8 +68,11 @@ public sealed class SessionSignOut
             for (var attempt = 0; attempt < 3; attempt++)
             {
                 await Task.Delay(TimeSpan.FromMilliseconds(1500), cancellationToken);
+
                 var currentUser = server.GetUser(session.Id);
+
                 cancellationToken.ThrowIfCancellationRequested();
+
                 if (!SameUser(originalUser, currentUser))
                 {
                     return MakeResult(

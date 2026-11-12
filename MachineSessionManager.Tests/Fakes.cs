@@ -39,7 +39,6 @@ internal sealed class FakeWtsServer : IWtsServer
         _dispose = dispose ?? (() => { });
     }
 
-
     public IReadOnlyList<WindowsSession> GetSessions()
     {
         if (_enumerationError is not null)
@@ -108,10 +107,10 @@ internal sealed class FakeEmailSender : IEmailSender
         _onSend = onSend;
     }
 
-
     public Task SendAsync(EmailMessage message, CancellationToken cancellationToken = default)
     {
         _onSend?.Invoke();
+
         if (_error is not null)
         {
             throw _error;
@@ -123,6 +122,7 @@ internal sealed class FakeEmailSender : IEmailSender
         }
 
         _messages.Add(message);
+
         return Task.CompletedTask;
     }
 }
@@ -150,6 +150,7 @@ internal sealed class FakeIdiraCredentialProvider : IIdiraCredentialProvider
         CallCount++;
         RequestedUserName = userName;
         _onGet?.Invoke();
+
         return _error is null ? Task.FromResult(Password) : Task.FromException<string>(_error);
     }
 }
@@ -175,6 +176,7 @@ internal sealed class FakeWindowsImpersonation : IWindowsImpersonation
     {
         CallCount++;
         ReceivedPassword = password;
+
         if (_error is not null)
         {
             throw _error;
@@ -182,6 +184,7 @@ internal sealed class FakeWindowsImpersonation : IWindowsImpersonation
 
         var previous = _currentUserName.Value;
         _currentUserName.Value = userName;
+
         try
         {
             return await action();

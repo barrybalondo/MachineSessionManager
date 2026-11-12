@@ -48,12 +48,15 @@ public sealed class EmailSender : IEmailSender
         }.ToMessageBody();
 
         using var client = new SmtpClient();
+
         var security = _settings.UseSsl
             ? SecureSocketOptions.StartTls
             : SecureSocketOptions.None;
 
         await client.ConnectAsync(_settings.Host, _settings.Port ?? 0, security, cancellationToken);
+
         await client.SendAsync(message, cancellationToken);
+
         await client.DisconnectAsync(true, cancellationToken);
     }
 }

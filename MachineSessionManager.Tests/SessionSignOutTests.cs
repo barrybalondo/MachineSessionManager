@@ -22,6 +22,7 @@ public sealed class SessionSignOutTests
             machine =>
             {
                 openedMachine = machine;
+
                 return server;
             });
 
@@ -55,6 +56,7 @@ public sealed class SessionSignOutTests
             readUser: _ =>
             {
                 Assert.False(disposed);
+
                 return ++reads == 1 ? Alice() : throw new Win32Exception(7022);
             },
             logoff: _ => Assert.False(disposed),
@@ -90,6 +92,7 @@ public sealed class SessionSignOutTests
     public async Task CancellationDuringVerificationDisposesTheOwnedConnection()
     {
         using var cancellation = new CancellationTokenSource();
+
         var disposed = false;
         var server = new FakeWtsServer(
             sessions: [],
@@ -109,12 +112,15 @@ public sealed class SessionSignOutTests
     public async Task AlreadyCancelledOperationDoesNotOpenAConnection()
     {
         using var cancellation = new CancellationTokenSource();
+
         cancellation.Cancel();
+
         var opened = false;
         var factory = new FakeWtsServerFactory(
             _ =>
             {
                 opened = true;
+
                 throw new InvalidOperationException("A cancelled operation must not open a connection.");
             });
 
@@ -131,6 +137,7 @@ public sealed class SessionSignOutTests
     public async Task CancellationBetweenNativeCallsPreventsLogoff(string cancelDuring)
     {
         using var cancellation = new CancellationTokenSource();
+
         var userReads = 0;
         var disposed = false;
         var server = new FakeWtsServer(
@@ -138,6 +145,7 @@ public sealed class SessionSignOutTests
             readUser: _ =>
             {
                 userReads++;
+
                 if (cancelDuring == "User")
                 {
                     cancellation.Cancel();
@@ -176,11 +184,13 @@ public sealed class SessionSignOutTests
             machine =>
             {
                 machines.Add(machine);
+
                 var server = new FakeWtsServer(
                     sessions: [],
                     readUser: _ => new WindowsSessionUser("other", "DOMAIN"),
                     dispose: () => disposals++);
                 connections.Add(server);
+
                 return server;
             });
         var signOut = new SessionSignOut(factory);

@@ -14,6 +14,7 @@ public sealed class MachineExecutionTests
     public async Task MachinesRunConcurrentlyButResultsAndReportsKeepConfigurationOrder()
     {
         using var releaseFirst = new ManualResetEventSlim();
+
         var firstStarted = Signal();
         var middleFinished = Signal();
         var lastFinished = Signal();
@@ -48,6 +49,7 @@ public sealed class MachineExecutionTests
                     });
             });
         var execution = Create(settings, factory).ExecuteAsync();
+
         try
         {
             await Task.WhenAll(firstStarted.Task, middleFinished.Task, lastFinished.Task)
@@ -87,6 +89,7 @@ public sealed class MachineExecutionTests
     public async Task TimeoutRetainsCompletedSessionsAndDoesNotWaitForTheBlockedQuery()
     {
         using var release = new ManualResetEventSlim();
+
         var queryStarted = Signal();
         var disposed = Signal();
         var blocked = new FakeWtsServer(
@@ -112,9 +115,11 @@ public sealed class MachineExecutionTests
             machines: ["SLOW", "FAST"],
             machineTimeout: TimeSpan.FromSeconds(1));
         var execution = Create(settings, factory).ExecuteAsync();
+
         try
         {
             await queryStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
             var results = await execution.WaitAsync(TimeSpan.FromSeconds(5));
 
             Assert.Equal(new[] { "SLOW", "SLOW", "FAST" }, results.Select(result => result.Machine));
@@ -143,6 +148,7 @@ public sealed class MachineExecutionTests
     public async Task ATimeoutDuringLogoffIsNotConfirmedAndDoesNotStartAnotherSession()
     {
         using var release = new ManualResetEventSlim();
+
         var logoffStarted = Signal();
         var signOutDisposed = Signal();
         var discoveryDisposed = Signal();
@@ -167,9 +173,11 @@ public sealed class MachineExecutionTests
             machines: ["VM"],
             machineTimeout: TimeSpan.FromSeconds(1));
         var execution = Create(settings, factory).ExecuteAsync();
+
         try
         {
             await logoffStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
             var results = await execution.WaitAsync(TimeSpan.FromSeconds(5));
             var result = Assert.Single(results);
 
@@ -196,6 +204,7 @@ public sealed class MachineExecutionTests
     public async Task ANewRunUsesFreshCancellationAndLateDiscoveryCannotLogOff()
     {
         using var release = new ManualResetEventSlim();
+
         var queryStarted = Signal();
         var disposed = Signal();
         var blocked = new FakeWtsServer(
@@ -204,6 +213,7 @@ public sealed class MachineExecutionTests
             {
                 queryStarted.TrySetResult();
                 Assert.True(release.Wait(TimeSpan.FromSeconds(10)));
+
                 return Alice();
             },
             dispose: () => disposed.TrySetResult());
@@ -222,9 +232,11 @@ public sealed class MachineExecutionTests
             machineTimeout: TimeSpan.FromSeconds(1));
         var manager = Create(settings, factory);
         var execution = manager.ExecuteAsync();
+
         try
         {
             await queryStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
             var first = Assert.Single(await execution.WaitAsync(TimeSpan.FromSeconds(5)));
             Assert.Equal(SessionStatusType.TimedOut, first.Status);
 
@@ -248,6 +260,7 @@ public sealed class MachineExecutionTests
     {
         using var cancellation = new CancellationTokenSource();
         using var release = new ManualResetEventSlim();
+
         var opened = Signal();
         var disposed = Signal();
         var reads = 0;
@@ -256,6 +269,7 @@ public sealed class MachineExecutionTests
             _ =>
             {
                 Interlocked.Increment(ref reads);
+
                 return Alice();
             },
             dispose: () => disposed.TrySetResult());
@@ -264,6 +278,7 @@ public sealed class MachineExecutionTests
             {
                 opened.TrySetResult();
                 Assert.True(release.Wait(TimeSpan.FromSeconds(10)));
+
                 return server;
             });
         var settings = new SessionSettings(
@@ -272,6 +287,7 @@ public sealed class MachineExecutionTests
             machines: ["VM"],
             machineTimeout: TimeSpan.FromSeconds(30));
         var execution = Create(settings, factory).ExecuteAsync(cancellation.Token);
+
         try
         {
             await opened.Task.WaitAsync(TimeSpan.FromSeconds(5));
@@ -296,12 +312,15 @@ public sealed class MachineExecutionTests
     public async Task AnAlreadyCancelledRunDoesNotOpenAnyConnections()
     {
         using var cancellation = new CancellationTokenSource();
+
         cancellation.Cancel();
+
         var opens = 0;
         var factory = new FakeWtsServerFactory(
             _ =>
             {
                 Interlocked.Increment(ref opens);
+
                 return new FakeWtsServer([], _ => Alice());
             });
         var settings = new SessionSettings(

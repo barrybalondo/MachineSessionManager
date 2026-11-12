@@ -15,6 +15,7 @@ internal sealed class ConsoleCancellation : IDisposable
     public ConsoleCancellation()
     {
         Token = _source.Token;
+
         Console.CancelKeyPress += OnCancelKeyPress;
     }
 
@@ -39,6 +40,7 @@ internal sealed class ConsoleCancellation : IDisposable
             lock (_sync)
             {
                 _cancellationCalls--;
+
                 if (_disposed && _cancellationCalls == 0)
                 {
                     _source.Dispose();
@@ -50,6 +52,7 @@ internal sealed class ConsoleCancellation : IDisposable
     public void Dispose()
     {
         Console.CancelKeyPress -= OnCancelKeyPress;
+
         lock (_sync)
         {
             if (_disposed)
@@ -58,6 +61,7 @@ internal sealed class ConsoleCancellation : IDisposable
             }
 
             _disposed = true;
+
             // A running Cancel owns the source until its callbacks finish.
             // Deferring disposal also handles cleanup from inside a callback.
             if (_cancellationCalls == 0)
@@ -70,6 +74,7 @@ internal sealed class ConsoleCancellation : IDisposable
     private void OnCancelKeyPress(object? sender, ConsoleCancelEventArgs eventArgs)
     {
         eventArgs.Cancel = true;
+
         Cancel();
     }
 }

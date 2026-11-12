@@ -56,6 +56,7 @@ public sealed class WindowsImpersonation : IWindowsImpersonation
     private static SafeAccessTokenHandle LogOn(string userName, string password)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(userName);
+
         if (string.IsNullOrEmpty(password) || password.Contains('\0'))
         {
             throw new ArgumentException("The impersonation password is empty or contains a null character.");
@@ -65,7 +66,9 @@ public sealed class WindowsImpersonation : IWindowsImpersonation
         var account = separator < 0 ? userName : userName[(separator + 1)..];
         // LogonUser requires a null domain for UPNs.
         var domain = separator < 0 ? null : userName[..separator];
+
         var passwordBuffer = Marshal.StringToHGlobalUni(password);
+
         try
         {
             // Keep local file access; the remote machine validates the supplied credentials.
@@ -78,13 +81,16 @@ public sealed class WindowsImpersonation : IWindowsImpersonation
                 token: out var token))
             {
                 var error = Marshal.GetLastWin32Error();
+
                 token?.Dispose();
+
                 throw new Win32Exception(error);
             }
 
             if (token.IsInvalid)
             {
                 token.Dispose();
+
                 throw new InvalidOperationException("Windows returned an invalid impersonation token.");
             }
 

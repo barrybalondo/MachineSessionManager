@@ -74,6 +74,7 @@ internal static class Program
 
             using var host = builder.Build();
             using var cancellation = new ConsoleCancellation();
+
             try
             {
                 return await host.Services.GetRequiredService<SessionJob>().RunAsync(cancellation.Token);

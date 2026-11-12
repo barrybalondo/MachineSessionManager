@@ -36,6 +36,7 @@ public static class SettingsLoader
         // Transport details are only required by EmailSender when a message is sent.
         var portText = configuration["Email:Port"];
         int? port = null;
+
         if (!string.IsNullOrWhiteSpace(portText))
         {
             if (!int.TryParse(portText, out int parsedPort) || parsedPort < 1 || parsedPort > 65535)
@@ -48,6 +49,7 @@ public static class SettingsLoader
 
         var sslText = configuration["Email:UseSsl"];
         var useSsl = false;
+
         if (sslText is not null && !bool.TryParse(sslText, out useSsl))
         {
             throw new InvalidOperationException("Email:UseSsl must be true or false.");
@@ -69,6 +71,7 @@ public static class SettingsLoader
     private static T RequiredEnum<T>(IConfiguration configuration, string key) where T : struct, Enum
     {
         var value = RequiredValue(configuration, key).Trim();
+
         // Accept named values only; numeric strings must not enable SignOut accidentally.
         if (!Enum.GetNames<T>().Contains(value, StringComparer.OrdinalIgnoreCase))
         {
@@ -81,6 +84,7 @@ public static class SettingsLoader
     private static string RequiredValue(IConfiguration configuration, string key)
     {
         var value = configuration[key];
+
         if (string.IsNullOrWhiteSpace(value))
         {
             throw new InvalidOperationException($"Set {key} explicitly in appsettings.json.");
@@ -92,6 +96,7 @@ public static class SettingsLoader
     private static TimeSpan RequiredDuration(IConfiguration configuration, string key)
     {
         var value = RequiredValue(configuration, key).Trim();
+
         if (!TimeSpan.TryParseExact(value, "c", CultureInfo.InvariantCulture, out var duration))
         {
             throw new InvalidOperationException($"{key} must be a duration such as 00:01:00.");

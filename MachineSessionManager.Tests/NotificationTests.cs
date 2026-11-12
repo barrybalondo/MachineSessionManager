@@ -90,6 +90,7 @@ public sealed class NotificationTests
             userName: "alice",
             machines: ["VM"],
             machineTimeout: TimeSpan.FromSeconds(30));
+
         return new EmailNotification(
             settings: settings,
             reportBuilder: new ReportBuilder(session),

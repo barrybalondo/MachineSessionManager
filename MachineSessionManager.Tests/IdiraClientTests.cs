@@ -21,19 +21,23 @@ public sealed class IdiraClientTests
             {
                 Assert.Equal(HttpMethod.Get, request.Method);
                 Assert.Equal(baseUrl + "/AIMWebService/api/Accounts", request.RequestUri!.GetLeftPart(UriPartial.Path));
+
                 var query = request.RequestUri.Query.TrimStart('?').Split('&')
                     .Select(item => item.Split('=', 2))
                     .ToDictionary(parts => parts[0], parts => Uri.UnescapeDataString(parts[1]));
+
                 Assert.Equal(3, query.Count);
                 Assert.Equal("MachineSessionManager", query["AppID"]);
                 Assert.Equal("Service Accounts", query["Safe"]);
                 Assert.Equal(userName, query["UserName"]);
                 Assert.Null(request.Content);
                 Assert.Null(request.Headers.Authorization);
+
                 return Task.FromResult(Response(
                     HttpStatusCode.OK,
                     JsonSerializer.Serialize(new { Content = Password, UserName = userName })));
             }));
+
         var client = new IdiraClient(
             httpClient,
             new IdiraSettings(baseUrl, "MachineSessionManager", "Service Accounts"));
@@ -75,6 +79,7 @@ public sealed class IdiraClientTests
     public async Task HttpFailuresIncludeTheProviderErrorAndStatus(HttpStatusCode status)
     {
         var body = JsonSerializer.Serialize(new { ErrorCode = "APPAP227E", ErrorMsg = "Too many objects match the query." });
+
         using var httpClient = ClientReturning(status, body);
 
         var error = await Assert.ThrowsAsync<HttpRequestException>(() => CreateClient(httpClient).GetPasswordAsync("svc@company.com"));
@@ -89,6 +94,7 @@ public sealed class IdiraClientTests
     public async Task NonJsonHttpFailuresStillReportTheHttpFailure(HttpStatusCode status)
     {
         const string body = "<html>CCP service unavailable</html>";
+
         using var httpClient = ClientReturning(status, body);
 
         var error = await Assert.ThrowsAsync<HttpRequestException>(() => CreateClient(httpClient).GetPasswordAsync("svc@company.com"));
@@ -109,6 +115,7 @@ public sealed class IdiraClientTests
     public async Task TransportErrorsArePreserved()
     {
         var failure = new HttpRequestException("The remote name could not be resolved.");
+
         using var httpClient = new HttpClient(
             new StubHandler((_, _) => Task.FromException<HttpResponseMessage>(failure)));
 
@@ -125,6 +132,7 @@ public sealed class IdiraClientTests
             (_, _) =>
             {
                 cancellation.Cancel();
+
                 return Task.FromCanceled<HttpResponseMessage>(cancellation.Token);
             }));
 

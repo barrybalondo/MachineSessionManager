@@ -25,6 +25,7 @@ public sealed class IdiraClient : IIdiraCredentialProvider
         if (!response.IsSuccessStatusCode)
         {
             var message = await response.Content.ReadAsStringAsync(cancellationToken);
+
             throw new HttpRequestException(
                 $"Idira CCP request failed with HTTP {(int)response.StatusCode}: {message}",
                 null,

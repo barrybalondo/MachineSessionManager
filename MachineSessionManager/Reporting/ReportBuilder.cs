@@ -32,6 +32,7 @@ public sealed class ReportBuilder
         var templateFile = Path.Combine(AppContext.BaseDirectory, "Templates", TemplateFileName);
 
         var template = Template.Parse(File.ReadAllText(templateFile));
+
         if (template.HasErrors)
         {
             throw new InvalidOperationException($"Invalid {TemplateFileName}: " + string.Join("; ", template.Messages));
@@ -64,6 +65,7 @@ public sealed class ReportBuilder
 
         var htmlBody = template.Render(model, member => member.Name);
         var plainTextBody = BuildPlainText(results, runTime);
+
         return new EmailReport(subject, htmlBody, plainTextBody);
     }
 

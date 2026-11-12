@@ -58,6 +58,7 @@ public sealed class EmailNotification
         }
 
         var report = _reportBuilder.Build(results);
+
         var message = new EmailMessage(
             from: _settings.From,
             to: _settings.To,

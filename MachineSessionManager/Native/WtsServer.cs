@@ -43,10 +43,12 @@ internal sealed class WtsServer : IWtsServer
         }
 
         var sessions = new List<WindowsSession>();
+
         try
         {
             // Native padding and pointer size differ between x86 and x64.
             var recordSize = Marshal.SizeOf<WtsSessionInfo>();
+
             for (var i = 0; i < count; i++)
             {
                 var entry = IntPtr.Add(buffer, i * recordSize);
@@ -54,6 +56,7 @@ internal sealed class WtsServer : IWtsServer
 
                 // Copy the UTF-16 text before the enumeration buffer is freed.
                 var stationName = Marshal.PtrToStringUni(info.StationName) ?? string.Empty;
+
                 sessions.Add(new WindowsSession(info.SessionId, stationName, info.State));
             }
         }
@@ -73,6 +76,7 @@ internal sealed class WtsServer : IWtsServer
     public WindowsSessionUser GetUser(int sessionId)
     {
         var userName = ReadString(sessionId, WtsInfoClassType.UserName);
+
         if (string.IsNullOrWhiteSpace(userName))
         {
             // Service and listener sessions may have no signed-in user.
@@ -80,6 +84,7 @@ internal sealed class WtsServer : IWtsServer
         }
 
         var domain = ReadString(sessionId, WtsInfoClassType.DomainName);
+
         return new WindowsSessionUser(userName, domain);
     }
 
@@ -159,6 +164,7 @@ internal sealed class WtsServer : IWtsServer
     {
         // Capture the cached native error before another interop call can replace it.
         var code = Marshal.GetLastPInvokeError();
+
         return new Win32Exception(code, $"{operation}: {new Win32Exception(code).Message} (Windows error {code}).");
     }
 

@@ -303,6 +303,7 @@ public sealed class SessionManagerTests
     private static SessionManager Create(SessionModeType mode, FakeWtsServer server, string userName)
     {
         var factory = new FakeWtsServerFactory(_ => server);
+
         return new SessionManager(
             settings: new SessionSettings(
                 mode: mode,

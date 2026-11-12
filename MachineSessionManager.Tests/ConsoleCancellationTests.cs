@@ -30,7 +30,9 @@ public sealed class ConsoleCancellationTests
     public void Dispose_FromCancellationCallback_DefersSourceDisposal()
     {
         using var cancellation = new ConsoleCancellation();
+
         var token = cancellation.Token;
+
         using var registration = token.Register(
             () =>
             {
@@ -47,8 +49,10 @@ public sealed class ConsoleCancellationTests
     public async Task Dispose_WhileCancellationCallbackIsRunning_DefersSourceDisposal()
     {
         using var cancellation = new ConsoleCancellation();
+
         var token = cancellation.Token;
         var callbackStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
         using var finishCallback = new ManualResetEventSlim();
         using var registration = token.Register(
             () =>
@@ -59,6 +63,7 @@ public sealed class ConsoleCancellationTests
             });
 
         var cancelling = Task.Run(cancellation.Cancel);
+
         try
         {
             await callbackStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
