@@ -57,10 +57,21 @@
                 </thead>
                 <tbody>
                   {{ for result in Results }}
+                  {{
+                    if result.Status == "Success" || result.Status == "Already Signed Out"
+                      color = "#15803d"
+                    else if result.Status == "Signed In"
+                      color = "#1d4ed8"
+                    else if result.Status == "Not Signed In"
+                      color = "#64748b"
+                    else
+                      color = "#b45309"
+                    end
+                  }}
                   <tr>
                     <td valign="top" style="padding:11px 8px;border-bottom:1px solid #dbe2ea;color:#334155;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:19px;mso-line-height-rule:at-least;">{{ result.Machine }}<br>{{ result.UserName }}</td>
                     <td valign="top" style="padding:11px 8px;border-bottom:1px solid #dbe2ea;color:#334155;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:19px;mso-line-height-rule:at-least;">{{ result.Session }}<br>{{ result.State }}</td>
-                    <td valign="top" style="padding:11px 8px;border-bottom:1px solid #dbe2ea;color:{{ result.Color }};font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:bold;line-height:19px;mso-line-height-rule:at-least;">{{ result.Status }}</td>
+                    <td valign="top" style="padding:11px 8px;border-bottom:1px solid #dbe2ea;color:{{ color }};font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:bold;line-height:19px;mso-line-height-rule:at-least;">{{ result.Status }}</td>
                     <td valign="top" style="padding:11px 8px;border-bottom:1px solid #dbe2ea;color:#334155;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:19px;mso-line-height-rule:at-least;">{{ result.Details }}</td>
                   </tr>
                   {{ end }}

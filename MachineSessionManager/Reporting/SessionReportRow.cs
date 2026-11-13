@@ -14,16 +14,13 @@ public sealed class SessionReportRow
 
     public string Details { get; }
 
-    public string Color { get; }
-
     public SessionReportRow(
         string machine,
         string userName,
         string session,
         string state,
         string status,
-        string details,
-        string color)
+        string details)
     {
         Machine = machine;
         UserName = userName;
@@ -31,6 +28,5 @@ public sealed class SessionReportRow
         State = state;
         Status = status;
         Details = details;
-        Color = color;
     }
 }

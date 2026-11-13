@@ -54,14 +54,7 @@ public sealed class ReportBuilder
                     session: r.SessionId?.ToString() ?? "-",
                     state: Html(r.State),
                     status: Html(FormatStatus(r.Status)),
-                    details: Html(r.Details),
-                    color: r.Status switch
-                    {
-                        SessionStatusType.Success or SessionStatusType.AlreadySignedOut => "#15803d",
-                        SessionStatusType.SignedIn => "#1d4ed8",
-                        SessionStatusType.NotSignedIn => "#64748b",
-                        _ => "#b45309"
-                    })));
+                    details: Html(r.Details))));
 
         var htmlBody = template.Render(model, member => member.Name);
         var plainTextBody = BuildPlainText(results, runTime);
