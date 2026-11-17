@@ -1,0 +1,100 @@
+using MachineSessionManager.Console.Configuration;
+using MachineSessionManager.Console.Email;
+using MachineSessionManager.Console.Idira;
+using MachineSessionManager.Console.Native;
+using MachineSessionManager.Console.Reporting;
+using MachineSessionManager.Console.Security;
+using MachineSessionManager.Console.Sessions;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Serilog;
+using SessionManager = MachineSessionManager.Console.Sessions.MachineSessionManager;
+
+namespace MachineSessionManager.Console;
+
+internal static class Program
+{
+    private static async Task<int> Main(string[] args)
+    {
+        Log.Logger = new LoggerConfiguration()
+            .WriteTo.Console()
+            .CreateLogger();
+
+        try
+        {
+            if (!OperatingSystem.IsWindows())
+            {
+                Log.Fatal("MachineSessionManager.Console requires Windows.");
+
+                return 2;
+            }
+
+            var builder = Host.CreateApplicationBuilder(
+                new HostApplicationBuilderSettings
+                {
+                    Args = args,
+                    ContentRootPath = AppContext.BaseDirectory
+                });
+
+            builder.Logging.ClearProviders();
+            // Main owns disposal so failures can still be logged after host cleanup.
+            builder.Services.AddSerilog(Log.Logger, dispose: false);
+
+            var session = SettingsLoader.LoadSession(builder.Configuration);
+            var notification = SettingsLoader.LoadNotification(builder.Configuration);
+            var email = SettingsLoader.LoadEmail(builder.Configuration);
+            var idira = SettingsLoader.LoadIdira(builder.Configuration);
+            var impersonation = SettingsLoader.LoadImpersonation(builder.Configuration);
+
+            builder.Services.AddSingleton(session);
+            builder.Services.AddSingleton(notification);
+            builder.Services.AddSingleton(email);
+            builder.Services.AddSingleton(idira);
+            builder.Services.AddSingleton(impersonation);
+
+            builder.Services.AddSingleton(
+                _ => new HttpClient(
+                    new HttpClientHandler
+                    {
+                        AllowAutoRedirect = false
+                    })
+                {
+                    Timeout = TimeSpan.FromSeconds(60)
+                });
+            builder.Services.AddSingleton<IIdiraCredentialProvider, IdiraClient>();
+            builder.Services.AddSingleton<IWindowsImpersonation, WindowsImpersonation>();
+            builder.Services.AddSingleton<IWtsServerFactory, WtsServerFactory>();
+            builder.Services.AddSingleton<SessionManager>();
+            builder.Services.AddSingleton<SessionSignOut>();
+            builder.Services.AddSingleton<ReportBuilder>();
+            builder.Services.AddSingleton<IEmailSender, EmailSender>();
+            builder.Services.AddSingleton<EmailNotification>();
+            builder.Services.AddSingleton<SessionJob>();
+
+            using var host = builder.Build();
+            using var cancellation = new ConsoleCancellation();
+
+            try
+            {
+                return await host.Services.GetRequiredService<SessionJob>().RunAsync(cancellation.Token);
+            }
+            catch (OperationCanceledException) when (cancellation.Token.IsCancellationRequested)
+            {
+                Log.Warning("Machine session job cancelled. Any submitted logoff may still complete.");
+
+                return 2;
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Fatal(ex, "Machine session job failed (HRESULT: 0x{HResult:X8})", ex.HResult);
+
+            return 2;
+        }
+        finally
+        {
+            await Log.CloseAndFlushAsync();
+        }
+    }
+}

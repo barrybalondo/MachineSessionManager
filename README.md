@@ -1,25 +1,25 @@
-# MachineSessionManager
+# MachineSessionManager.Console
 
-A .NET 8 console job that checks a user's sessions across Windows machines. It can also sign out matching user sessions and email a report.
+`MachineSessionManager.Console` is a .NET 8 console job that checks a user's sessions across Windows machines. It can also sign out matching user sessions and email a report.
 
 Remote access uses a separate Windows account. Its password is fetched from Idira at the start of each run.
 
 ## Quick start
 
-Requires Windows and the .NET 8 SDK. Replace the sample values in [appsettings.json](MachineSessionManager/appsettings.json) with your machines, accounts, and CCP settings. From the repository root:
+Requires Windows and the .NET 8 SDK. Replace the sample values in [appsettings.json](MachineSessionManager.Console/appsettings.json) with your machines, accounts, and CCP settings. From the repository root:
 
 ```powershell
-dotnet build MachineSessionManager.sln
-dotnet run --project MachineSessionManager -- --Session:ModeType=Check --Notification:NotificationModeType=Never
+dotnet build MachineSessionManager.Console.sln
+dotnet run --project MachineSessionManager.Console -- --Session:ModeType=Check --Notification:NotificationModeType=Never
 ```
 
 To sign out matching user sessions:
 
 ```powershell
-dotnet run --project MachineSessionManager -- --Session:ModeType=SignOut
+dotnet run --project MachineSessionManager.Console -- --Session:ModeType=SignOut
 ```
 
-Pass a setting on the command line to override it for that run. In Visual Studio, open `MachineSessionManager.sln` and run the project with the settings in `appsettings.json`.
+Pass a setting on the command line to override it for that run. In Visual Studio, open `MachineSessionManager.Console.sln` and run the project with the settings in `appsettings.json`.
 
 ## Configuration
 
@@ -66,19 +66,19 @@ Keep passwords out of configuration.
 
 ## Deployment
 
-Publish a Windows executable:
+Publish `MachineSessionManager.Console.exe` for Windows:
 
 ```powershell
-dotnet publish MachineSessionManager -c Release -r win-x64 --self-contained false -o C:\Apps\MachineSessionManager
+dotnet publish MachineSessionManager.Console -c Release -r win-x64 --self-contained false -o C:\Apps\MachineSessionManager.Console
 ```
 
 Install the .NET 8 runtime on the job host, or publish with `--self-contained true` to include it.
 
 Create two Task Scheduler entries using the same executable:
 
-- Program: `C:\Apps\MachineSessionManager\MachineSessionManager.exe`
+- Program: `C:\Apps\MachineSessionManager.Console\MachineSessionManager.Console.exe`
 - Arguments: `--Session:ModeType=Check` or `--Session:ModeType=SignOut`
-- Start in: `C:\Apps\MachineSessionManager`
+- Start in: `C:\Apps\MachineSessionManager.Console`
 
 Give Check and SignOut their own schedules. Set each task to skip starting another instance while it is already running.
 
