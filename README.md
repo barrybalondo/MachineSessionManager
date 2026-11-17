@@ -26,7 +26,7 @@ Pass a setting on the command line to override it for that run. In Visual Studio
 | Setting | Required | Description |
 | --- | --- | --- |
 | `Session:ModeType` | Yes | `Check` lists matching sessions. `SignOut` signs out matching user sessions. |
-| `Session:UserName` | Yes | User to check, preferably `DOMAIN\user`. |
+| `Session:UserName` | Yes | User to check. In JSON, use `"DOMAIN\\user"`; omit the domain to match the username in any domain. |
 | `Session:Machines` | Yes | Machine names, e.g. `["MACHINE01", "MACHINE02"]`. Names are trimmed and duplicates removed. |
 | `Session:MachineTimeout` | Yes | Time allowed per machine, including discovery, session checks, and sign-out verification. Must be positive, e.g. `00:01:00`. |
 | `Idira:BaseUrl` | Yes | HTTPS CCP base URL, e.g. `https://ccp.company.com`. Omit the trailing slash. |
@@ -38,37 +38,31 @@ Pass a setting on the command line to override it for that run. In Visual Studio
 | `Notification:To` | When sending email | Array of recipient addresses. At least one is required. |
 | `Notification:Cc` | No | Array of CC addresses. Use `[]` for none. |
 | `Notification:Bcc` | No | Array of BCC addresses. Use `[]` for none. |
-| `Email:Host` | When sending email | SMTP relay hostname. |
+| `Email:Host` | When sending email | SMTP relay hostname. Authentication is not supported. |
 | `Email:Port` | No | SMTP port. Leave as `null` to use MailKit's defaults. |
-| `Email:UseSsl` | No | `true` requires STARTTLS, usually on port 587. Defaults to `false` (no TLS). |
-
-`Session:UserName` is the user being checked. `Impersonation:UserName` is the account doing the work. In JSON, write a domain-qualified name as `"DOMAIN\\user"`. A target username without a domain matches that username in any domain.
-
-Both mode settings are required. Mode values ignore case. Email uses an SMTP relay without authentication. If TLS is off, use a trusted internal relay.
+| `Email:UseSsl` | No | `true` requires STARTTLS, usually on port 587. Defaults to `false` (no TLS; use a trusted internal relay). |
 
 ## Credentials and access
 
-The job calls the [CCP GET API](https://docs.cyberark.com/credential-providers/latest/en/content/ccp/calling-the-web-service-using-rest.htm) once per run, using AppID, Safe, and the impersonation username. Those values must resolve to one Vault account. The password comes from `Content` and is used for outbound Windows credentials (`LOGON32_LOGON_NEW_CREDENTIALS`). Local file access, reporting, and email use the account that started the job.
+The job retrieves the password from Idira's [CCP API](https://docs.cyberark.com/credential-providers/latest/en/content/ccp/calling-the-web-service-using-rest.htm) once per run. `AppId`, `Safe`, and `Impersonation:UserName` must identify one Vault account.
 
-CCP lookup or Windows token creation failures stop the job. The remote machine validates the password when the job connects. Remote access does not fall back to the scheduled task account. CCP errors include the HTTP status and the provider's error text. Keep passwords out of configuration; successful credential responses are not logged.
+Remote operations use the impersonation account. Local files, reporting, and email use the account that starts the job. Credential setup failures stop the run without falling back to that account.
 
-The host and accounts need:
+Required access:
 
-- Existing CCP authorization for the host and AppID, access to retrieve from the Safe, and a reachable HTTPS endpoint with a trusted certificate.
-- The remote machines must be able to authenticate the configured account.
-- RDS **Query Information** permission for the impersonation account on target machines for checks, and **Reset** permission for sign-outs. Firewalls must allow the remote connections.
+- **CCP:** Grant the machine access to retrieve the service account password, and configure the correct `AppId` and `Safe`.
+- **Target machines:** Grant the impersonation account RDS **Query Information** permission for checks and **Reset** permission for sign-outs. Allow authentication and remote connections through the firewall.
+- **Launching account:** Access to the app, configuration, CCP, and SMTP relay.
 
-The scheduled task account needs access to the app, configuration, CCP, and SMTP relay. The impersonation account needs the remote session permissions.
+Keep passwords out of configuration.
 
 ## Session behavior
 
-`Check` lists matching sessions. `SignOut` signs out the configured user's sessions, including active, disconnected, and console sessions. The job checks session ownership again before sign-out, then verifies that the session ended. Signing out closes applications and can lose unsaved work.
-
-Machines are checked in parallel. Results follow the order in `Session:Machines`. Access denied, unreachable machines, and failures to read a session are reported as issues.
-
-When a machine times out, completed results are kept. Unfinished work is marked `TimedOut`, or `NotConfirmed` if a sign-out was in progress. A timeout or Ctrl+C cannot interrupt a Windows call already running or undo a sign-out already submitted.
-
-`Relevant` emails include matching sessions, errors, skipped operations, timeouts, and unconfirmed sign-outs. Startup, credential, or impersonation failures, missing Windows DLLs, and cancelled runs do not send a report; check the console output for the error. If sending email fails, the job returns exit code `2` even if the session work has already finished.
+- `Check` reports matching sessions.
+- `SignOut` signs out matching sessions, including disconnected and console sessions. It rechecks ownership and verifies completion. Unsaved work can be lost.
+- Machines run in parallel; report results follow the configured order.
+- Timeouts preserve completed results. Unfinished work becomes `TimedOut`, or `NotConfirmed` when a sign-out was underway. Submitted Windows calls may finish after timeout or cancellation.
+- `Relevant` emails include matching sessions and issues. Fatal errors and cancellation stop the run without a report.
 
 ## Deployment
 
